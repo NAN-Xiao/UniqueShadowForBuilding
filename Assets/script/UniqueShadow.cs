@@ -114,8 +114,8 @@ public class UniqueShadow : MonoBehaviour
         m_depthCopy.SetFloat(_BLURSIZE,m_blur);
         m_depthCopy.SetFloat("_MainTex_TexelSize",m_shadowMapSize);
         //esm
-        Graphics.Blit(m_shadowMap_template, m_shadowMap_final, m_depthCopy,1);
-      //  Graphics.Blit(m_shadowMap_template2, m_shadowMap_final, m_depthCopy, 0);
+        Graphics.Blit(m_shadowMap_template, m_shadowMap_template2, m_depthCopy,1);
+       Graphics.Blit(m_shadowMap_template2, m_shadowMap_final, m_depthCopy, 0);
 
         SetUniforms();  
     }

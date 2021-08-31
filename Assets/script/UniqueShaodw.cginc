@@ -66,7 +66,6 @@
     float _UniqueShadowStrength;
     float _UniqueShadowMapSize;
     float _ESMConst;
-
     float _VSMMin;
 
     inline float remapping(float shadow_factor, float minVal)
@@ -75,61 +74,79 @@
     }
 
 
-    float  Chebyshev(float2 moments, float mean, float minVariance, float reduceLightBleeding)
-    {
-        float variance = moments.y - (moments.x * moments.x);
-        variance = max(variance, minVariance);
-        float d = mean - moments.x;
-
-        float pMax = remapping(variance / (variance + (d * d)), reduceLightBleeding);
-
-        #if UNITY_REVERSED_Z
-            return mean > moments.x ? 1 : pMax;
-            float p = step(moments.x, mean);
-            return max(p, pMax);
-        #else
-            return mean <= moments.x ? 1 : pMax;
-            float p = step(mean, moments.x);
-            return max(p, pMax);
-        #endif
-    }
-
-
-
     float random(float3 seed, int i)
     {
         float4 seed4 = float4(seed,i);
         float dot_product = dot(seed4,float4(12.9898f,78.233f,45.164f,94.673f));
         return frac(sin(dot_product) * 43758.5453);
     }
-    
+
+
     float4 TransformWorldToShadowCoord(float3 positionWS)
     {
         return mul(_UniqueShadowMatrix, float4(positionWS, 1.0));
     }
 
 
-    float2 SampleVSMPreFilteredShadowmap(float worldpos)//(TEXTURE2D_PARAM(ShadowMap, sampler_ShadowMap), float4 shadowCoord, ShadowSamplingData samplingData)
+    float  Chebyshev(float4 worldpos)//, float mean, float minVariance, float reduceLightBleeding)//
     {
         float4 shadowCoord=TransformWorldToShadowCoord(worldpos);
         float depth = shadowCoord.z/shadowCoord.w;
-        float2 moments =tex2D(_UniqueShadowTexture, shadowCoord).xy;
-
-        return moments;
-        float p = Chebyshev(moments, depth, 0.0001f, _VSMMin);//
-        return p;
+        float2 moments =tex2D(_UniqueShadowTexture, shadowCoord).xy;     
+        float variance = moments.y - (moments.x * moments.x);
+        variance = max(variance, 0.0001f);
+        float d = shadowCoord.z - moments.x;
+        float pMax = remapping(variance / (variance + (d * d)), _VSMMin);
+        #if UNITY_REVERSED_Z
+            //return mean > moments.x ? 1 : pMax;
+            float p = step(moments.x, _VSMMin);
+            return max(p, pMax);
+        #else
+            //return mean <= moments.x ? 1 : pMax;
+            float p = step(_VSMMin, moments.x);
+            return max(p, pMax);
+        #endif
     }
 
 
+// From http://fabiensanglard.net/shadowmappingVSM/index.php
+    float chebyshevUpperBound(float distance)
+    {
+        vec2 moments = texture2D(shadowMap,scPostW.xy).rg;
+        
+        // Surface is fully lit. as the current fragment is before the light occluder
+        if (distance <= moments.x)
+        return 1.0;
+
+        // The fragment is either in shadow or penumbra. We now use chebyshev's upperBound to check
+        // How likely this pixel is to be lit (p_max)//
+        float variance = moments.y - (moments.x*moments.x);
+        //variance = max(variance, 0.000002);
+        variance = max(variance, 0.00002);
+
+        float d = distance - moments.x;
+        float p_max = variance / (variance + d*d);
+
+        return p_max;
+    }
+
+    
+
+
+    float SampleVSMPreFilteredShadowmap(float4 worldpos)//(TEXTURE2D_PARAM(ShadowMap, sampler_ShadowMap), float4 shadowCoord, ShadowSamplingData samplingData)
+    {
+        
+        float p = Chebyshev(worldpos);//
+        return p;
+    }
 
 
 
     half UniqueShadowESM(half3 worldPos)
     {
         float4 shadowCoord=TransformWorldToShadowCoord(worldPos);
-        // half shadow = 0.f;
+        // half shadow = 0.f;//
         half shadow =( tex2D(_UniqueShadowTexture, shadowCoord)).r;
-
         #if UNITY_REVERSED_Z
             // e^(cz) * e^(-cd)//
             shadow = saturate(exp(_ESMConst * shadowCoord.z) * shadow);
@@ -139,10 +156,10 @@
             shadow = saturate(exp(-_ESMConst * shadowCoord.z) * shadow);
             //shadow = saturate(exp(shadow - _ESMConst * shadowCoord.z));
         #endif
-
         return shadow;
     }
-    
+
+
     half SampleUnique(half3 worldPos)
     {
         float4 shadowCoord=TransformWorldToShadowCoord(worldPos);
