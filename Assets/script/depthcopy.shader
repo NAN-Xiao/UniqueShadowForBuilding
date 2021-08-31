@@ -85,7 +85,7 @@
                 o += weight * tex2D(_MainTex, i.uv + float2(x, y) * _MainTex_TexelSize.xy * blurOffset);
             }
         }
-        return float4(o.r,g,0,0);
+        return o;//float4(o.r,g,0,0);
     }
     
     ENDCG
@@ -102,7 +102,7 @@
             ENDCG
         }
         
-        // Pass 1 ESM 
+        // Pass 1 VSM 
         Pass
         {
             CGPROGRAM
@@ -116,7 +116,8 @@
                 #else
                     float e = exp(_ESMConst * d);
                 #endif
-                return float4(d,e, 0, 0);
+               // return float4(e,0, 0, 0);
+                return float4(d,d*d, 0, 0);
             }
             ENDCG
         }
@@ -128,12 +129,14 @@
             fixed4 frag (v2f i) : SV_Target
             {
                 float o = 0;
-                float g= tex2D(_MainTex, i.uv).r;
+                float e= tex2D(_MainTex, i.uv).r;
                 #if UNITY_REVERSED_Z
-                    float e = exp(-_ESMConst * g);
+                    float g= exp(-_ESMConst * e);
                 #else
-                    float e = exp(_ESMConst * g);
+                    float g = exp(_ESMConst * e);
                 #endif
+
+
 
                 const float gussianKernel[25] = {
                     0.002969, 0.013306, 0.021938, 0.013306, 0.002969,
@@ -152,7 +155,7 @@
                 return float4(o.r,g,0,0);
                 
                 
-                return float4(o,e, 0, 0);
+               // return float4(o,e, 0, 0);
             }
             ENDCG
         }

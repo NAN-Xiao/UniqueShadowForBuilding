@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 
@@ -24,9 +23,10 @@ public class UniqueShadow : MonoBehaviour
     //public
     public Light m_shadowLight;
     public int m_shadowMapSize = 2048;
-    public RenderTexture m_shadowMap;
-    public RenderTexture m_shadowMap2;
-    public RenderTexture m_shadowMap3;
+    public RenderTexture m_shadowMap_template;
+    public RenderTexture m_shadowMap_template2;
+
+    public RenderTexture m_shadowMap_final;
     public float m_softFactor = 2.0f;
     public float _far=1.0f;
     [Range(0f,0.01f)]
@@ -35,8 +35,11 @@ public class UniqueShadow : MonoBehaviour
     [Range(0f, 1.0f)] 
     public float strength = 1.0f;
     public float m_blur;
-    public int m_esmcount=8;
- 
+   // public int m_esmcount=8;
+
+    public float m_VSMMin = 1;
+
+
     const string UNIQUE_SHADOW = "UNIQUESHADOW";
     const string _UniqueShadowMatrix = "_UniqueShadowMatrix";
     const string _UniqueShadowFilterWidth = "_UniqueShadowFilterWidth";
@@ -98,23 +101,23 @@ public class UniqueShadow : MonoBehaviour
         m_shadowMatrix = m_shadowSpaceMatrix * camproj * m_shadowCamera.worldToCameraMatrix;
    
         m_shadowCamera.Render();
-        if (m_shadowMap2==null)
+        if (m_shadowMap_final==null)
         {
-            var descriptor = m_shadowMap.descriptor;
-            descriptor.graphicsFormat = GraphicsFormat.R16G16_SFloat;
-            m_shadowMap2 = RenderTexture.GetTemporary(descriptor);
-            m_shadowMap3=RenderTexture.GetTemporary(descriptor);
-            //m_shadowMap2.format = RenderTextureFormat.RGHalf;
+            var descriptor = m_shadowMap_template.descriptor;
+         
+            m_shadowMap_final = RenderTexture.GetTemporary(descriptor);
+            m_shadowMap_final.format = RenderTextureFormat.RG16;
+            //m_shadowMap_final.format = RenderTextureFormat.RGHalf;
+            m_shadowMap_template2 = RenderTexture.GetTemporary(m_shadowMap_final.descriptor);
         }
       
-        m_depthCopy.SetFloat(_ESMConst,m_esmcount);
         m_depthCopy.SetFloat(_BLURSIZE,m_blur);
         m_depthCopy.SetFloat("_MainTex_TexelSize",m_shadowMapSize);
         //esm
-        Graphics.Blit(m_shadowMap,m_shadowMap3,m_depthCopy,2); 
-        //blur
-      //  Graphics.Blit(m_shadowMap3,m_shadowMap2,m_depthCopy,0);
-       SetUniforms();
+        Graphics.Blit(m_shadowMap_template, m_shadowMap_final, m_depthCopy,1);
+      //  Graphics.Blit(m_shadowMap_template2, m_shadowMap_final, m_depthCopy, 0);
+
+        SetUniforms();  
     }
 
     void SetUniforms()
@@ -125,10 +128,11 @@ public class UniqueShadow : MonoBehaviour
             m.EnableKeyword(UNIQUE_SHADOW);
             m.SetMatrix(_UniqueShadowMatrix, m_shadowMatrix);
             m.SetFloat(_UniqueShadowFilterWidth, m_softFactor / m_shadowMapSize);
-            m.SetTexture(_UniqueShadowTexture, m_shadowMap);
+            m.SetTexture(_UniqueShadowTexture, m_shadowMap_template);
             m.SetFloat(_UniqueShadowStrength, Mathf.Clamp01(strength));
             m.SetFloat(_UniqueShadowMapSize,m_shadowMapSize);
-            m.SetFloat(_ESMConst,m_esmcount); 
+            m.SetFloat("_VSMMin", m_VSMMin);
+
         }
     }
 
@@ -172,17 +176,17 @@ public class UniqueShadow : MonoBehaviour
 
     void GetRenderTarget()
     {
-        if (m_shadowMap == null)
+        if (m_shadowMap_template == null)
         {
 //            var fm = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.Shadowmap)
 //                ? RenderTextureFormat.Shadowmap
 //                : RenderTextureFormat.Depth;
 
-            m_shadowMap = RenderTexture.GetTemporary(m_shadowMapSize, m_shadowMapSize, 16, RenderTextureFormat.Depth);
-            m_shadowMap.filterMode = FilterMode.Point;
-            m_shadowMap.wrapMode = TextureWrapMode.Clamp;
+            m_shadowMap_template = RenderTexture.GetTemporary(m_shadowMapSize, m_shadowMapSize, 16, RenderTextureFormat.Shadowmap);
+            m_shadowMap_template.filterMode = FilterMode.Point;
+            m_shadowMap_template.wrapMode = TextureWrapMode.Clamp;
         }
-        m_shadowCamera.targetTexture = m_shadowMap;
+        m_shadowCamera.targetTexture = m_shadowMap_template;
     }
 
     void InitMaterial()
@@ -201,8 +205,8 @@ public class UniqueShadow : MonoBehaviour
     
     private void OnDisable()
     {
-        RenderTexture.ReleaseTemporary(m_shadowMap);
-        m_shadowMap = null;
+        RenderTexture.ReleaseTemporary(m_shadowMap_template);
+        m_shadowMap_template = null;
         for (int i = 0, n = m_mts.Count; i < n; ++i)
         {
             var m = m_mts[i];
