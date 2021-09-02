@@ -33,6 +33,7 @@
         float4 uv23: TEXCOORD2;
         float4 vertex : SV_POSITION;
     };
+
     
     v2f vert (appdata v)
     {
@@ -82,10 +83,10 @@
         for (int x = -2; x <= 2; ++x) {
             for (int y = -2; y <= 2; ++y) {
                 float weight = gussianKernel[x * 5 + y + 11];
-                o += weight * tex2D(_MainTex, i.uv + float2(x, y) * _MainTex_TexelSize.xy * blurOffset);
+                o += weight * tex2D(_MainTex, i.uv + float2(x, y) * _MainTex_TexelSize.xx* blurOffset);
             }
         }
-        return o;//float4(o.r,g,0,0);
+        return o;
     }
     
     ENDCG
@@ -111,16 +112,11 @@
             fixed4 frag (v2f i) : SV_Target
             {
                 float d = tex2D(_MainTex, i.uv).r;
-                #if UNITY_REVERSED_Z
-                    float e = exp(-_ESMConst * d);
-                #else
-                    float e = exp(_ESMConst * d);
-                #endif
-               // return float4(e,0, 0, 0);
-                return float4(d,d*d, 0, 0);
+                return float4(d,d*d,0,0);
             }
             ENDCG
         }
+        //pass 2  esm 
         pass
         {
             CGPROGRAM
@@ -129,15 +125,12 @@
             fixed4 frag (v2f i) : SV_Target
             {
                 float o = 0;
-                float e= tex2D(_MainTex, i.uv).r;
+                float d= tex2D(_MainTex, i.uv).r;
                 #if UNITY_REVERSED_Z
-                    float g= exp(-_ESMConst * e);
+                    float g= exp(-_ESMConst * d);
                 #else
-                    float g = exp(_ESMConst * e);
+                    float g = exp(_ESMConst * d);
                 #endif
-
-
-
                 const float gussianKernel[25] = {
                     0.002969, 0.013306, 0.021938, 0.013306, 0.002969,
                     0.013306, 0.059634, 0.098320, 0.059634, 0.013306,
@@ -152,13 +145,67 @@
                         o += weight * tex2D(_MainTex, i.uv + float2(x, y) * _MainTex_TexelSize.xy * blurOffset).r;
                     }
                 }
+                
                 return float4(o.r,g,0,0);
-                
-                
-               // return float4(o,e, 0, 0);
             }
             ENDCG
         }
+
+        // pass 3 boxfilter
+        pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            fixed4 frag (v2f i) : SV_Target
+            {
+                const float4 samples[4] ={
+                    -1.0, 0.0, 0, 0.25,     
+                    1.0, 0.0, 0, 0.25,     
+                    0.0, 1.0, 0, 0.25,     
+                    0.0, -1.0, 0, 0.25 
+                };
+                
+                float4 col=(float4)0;
+                for(int ii = 0; ii<4;ii++)
+                {
+                    col += samples[ii].w* tex2D(_MainTex,i.uv +float2(samples[ii].x, samples[ii].y)* _MainTex_TexelSize.xx*_BlurSize);
+                }      
+                return col;
+            }
+            ENDCG
+        }
+        //pass 4 vsm blur
+        pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            fixed4 frag (v2f i) : SV_Target
+            {
+                float o = 0;
+                float d= tex2D(_MainTex, i.uv).g;
+                const float gussianKernel[25] = {
+                    0.002969, 0.013306, 0.021938, 0.013306, 0.002969,
+                    0.013306, 0.059634, 0.098320, 0.059634, 0.013306,
+                    0.021938, 0.098320, 0.162103, 0.098320, 0.021938,
+                    0.013306, 0.059634, 0.098320, 0.059634, 0.013306,
+                    0.002969, 0.013306, 0.021938, 0.013306, 0.002969,
+                };
+                float2 blurOffset = 1 + _BlurSize;
+                for (int x = -2; x <= 2; ++x) {
+                    for (int y = -2; y <= 2; ++y) {
+                        float weight = gussianKernel[x * 5 + y + 11];
+                        o += weight * tex2D(_MainTex, i.uv + float2(x, y) * _MainTex_TexelSize.xy * blurOffset).r;
+                    }
+                }
+                
+                return float4(o.r,d,0,0);
+            }
+            ENDCG
+        }
+
+        
         
     }
 }
