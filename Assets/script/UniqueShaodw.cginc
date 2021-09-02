@@ -24,7 +24,7 @@
     };
     
     
-    static const float2 nvsf_Poisson32[] = 
+    static  float2 nvsf_Poisson32[] = 
     {
         { -0.975402, -0.0711386 },
         { -0.920347, -0.41142 },
@@ -70,115 +70,143 @@
 
     inline float remapping(float shadow_factor, float minVal)
     {
-        return saturate((shadow_factor - minVal) / (1.0 - minVal));
+        return saturate((shadow_factor - minVal) / (1.0f - minVal));
     }
-
-
     float random(float3 seed, int i)
     {
         float4 seed4 = float4(seed,i);
         float dot_product = dot(seed4,float4(12.9898f,78.233f,45.164f,94.673f));
         return frac(sin(dot_product) * 43758.5453);
     }
-
-
-    float4 TransformWorldToShadowCoord(float3 positionWS)
+    float4 TransformWorldToShadowCoord(float3 worldPos)
     {
-        return mul(_UniqueShadowMatrix, float4(positionWS, 1.0));
+        return mul(_UniqueShadowMatrix, float4(worldPos, 1.0));
     }
-
-
-    float  Chebyshev(float4 worldpos)//, float mean, float minVariance, float reduceLightBleeding)//
-    {
-        float4 shadowCoord=TransformWorldToShadowCoord(worldpos);
-        float depth = shadowCoord.z/shadowCoord.w;
-        float2 moments =tex2D(_UniqueShadowTexture, shadowCoord).xy;     
+    
+    
+    
+    
+    ///nor set min
+    float Chebyshev2(float2 moments, float mean, float minVariance) 
+    { 
+        float shadow =0.0f; 
         float variance = moments.y - (moments.x * moments.x);
-        variance = max(variance, 0.0001f);
-        float d = shadowCoord.z - moments.x;
+        variance = max(variance, 0.000001f); 
+        float d = mean - moments.x; 
+        shadow = variance / (variance + (d * d)); 
+        float amount = 0.6f;
+        shadow = clamp((shadow - amount) / (1.0f - amount), 0.0f, 1.0f); 
+        return shadow;
+    }
+    
+    inline float Chebyshev(float2 moments, float mean)
+    {
+        float variance = moments.y - (moments.x * moments.x);
+        variance = max(variance, 0.0001);
+        float d = mean - moments.x;
+
         float pMax = remapping(variance / (variance + (d * d)), _VSMMin);
+
         #if UNITY_REVERSED_Z
             //return mean > moments.x ? 1 : pMax;
-            float p = step(moments.x, _VSMMin);
+            float p = step(moments.x, mean);
             return max(p, pMax);
         #else
             //return mean <= moments.x ? 1 : pMax;
-            float p = step(_VSMMin, moments.x);
+            float p = step(mean, moments.x);
             return max(p, pMax);
         #endif
     }
 
-
-// From http://fabiensanglard.net/shadowmappingVSM/index.php
-    float chebyshevUpperBound(float distance)
+    // From http://fabiensanglard.net/shadowmappingVSM/index.php
+    float chebyshevUpperBound(float3 worldPos)
     {
-        vec2 moments = texture2D(shadowMap,scPostW.xy).rg;
+        float4 shadowcoord=TransformWorldToShadowCoord(worldPos);
+        float2 moments = tex2D(_UniqueShadowTexture,shadowcoord.xy).rg;
         
         // Surface is fully lit. as the current fragment is before the light occluder
-        if (distance <= moments.x)
-        return 1.0;
-
-        // The fragment is either in shadow or penumbra. We now use chebyshev's upperBound to check
-        // How likely this pixel is to be lit (p_max)//
+        if( shadowcoord.z> moments.x) 
+        {
+            float p = ( shadowcoord.z <= moments.x);  
+        }
         float variance = moments.y - (moments.x*moments.x);
         //variance = max(variance, 0.000002);
         variance = max(variance, 0.00002);
 
-        float d = distance - moments.x;
-        float p_max = variance / (variance + d*d);
+        float d = shadowcoord.z - moments.x;
+        float p_max = variance / (variance - d*d);
 
-        return p_max;
+        return max(p_max,shadowcoord.z);
     }
 
-    
-
-
-    float SampleVSMPreFilteredShadowmap(float4 worldpos)//(TEXTURE2D_PARAM(ShadowMap, sampler_ShadowMap), float4 shadowCoord, ShadowSamplingData samplingData)
+    //vsm
+    float UniqueShadowVSMFilter(float3 worldpos)//(TEXTURE2D_PARAM(ShadowMap, sampler_ShadowMap), float4 shadowCoord, ShadowSamplingData samplingData)
     {
-        
-        float p = Chebyshev(worldpos);//
+        float4 shadowCoord=TransformWorldToShadowCoord(worldpos);
+        float2 shadow =( tex2D(_UniqueShadowTexture, shadowCoord)).rg;
+        float p = Chebyshev(shadow,shadowCoord.z/shadowCoord.w);//
         return p;
     }
 
 
-
-    half UniqueShadowESM(half3 worldPos)
+//esm
+    half UniqueShadowESMFilter(half3 worldPos)
     {
         float4 shadowCoord=TransformWorldToShadowCoord(worldPos);
-        // half shadow = 0.f;//
-        half shadow =( tex2D(_UniqueShadowTexture, shadowCoord)).r;
+        half shadow =( tex2D(_UniqueShadowTexture, shadowCoord)).g;
         #if UNITY_REVERSED_Z
-            // e^(cz) * e^(-cd)//
-            shadow = saturate(exp(_ESMConst * shadowCoord.z) * shadow);
-            //shadow = saturate(exp(_ESMConst * shadowCoord.z - attenuation));
+            shadow = saturate(exp(_ESMConst * (shadowCoord.z)) * shadow);
         #else
             // e^(-cz) * e^(cd)//
-            shadow = saturate(exp(-_ESMConst * shadowCoord.z) * shadow);
-            //shadow = saturate(exp(shadow - _ESMConst * shadowCoord.z));
+            shadow = saturate(exp(-_ESMConst * shadowCoord.z+0.02) * shadow);
         #endif
-        return shadow;
+        return shadow*shadow;
     }
 
 
-    half SampleUnique(half3 worldPos)
+    ///new nvidia paper
+    // float ChebyshevUpperBound(float2 moments, float distance)
+    // {
+        //     // One-tailed inequality valid
+        
+        //     // Compute variance
+        //     float variance = moments.y - (moments.x*moments.x);
+        //     variance = max(variance, _VSMMin);  
+        //     // Compute probabilistic upper bound.
+        //     float d =distance – moments.x;
+        //     float p_max = variance / (variance + d*d);
+        //     return max(p,p_max);
+    // } 
+
+    // float ShadowContribution(float3 worldPos)//float2 LightTexCoord, float DistanceToLight) 
+    // {   
+        //     float4 shadowCoord=TransformWorldToShadowCoord(worldPos);
+        //     float2 Moments=tex2D(_UniqueShadowTexture, shadowCoord.xy).rg;
+        //     // Read the moments from the variance shadow map.  
+        //     // Compute the Chebyshev upper bound.   
+        //     return ChebyshevUpperBound(Moments, shadowCoord.z/shadowCoord.w); 
+    // } 
+    ///new nvidia paper
+    
+    
+    
+    //泊松分佈
+    half UniqueShadowPoissonPCF(half3 worldPos)
     {
         float4 shadowCoord=TransformWorldToShadowCoord(worldPos);
         // shadowCoord.xyz/shadowCoord.w;
         half4 uv = shadowCoord;
         half shadow = 0.f;
-        
-        
         for(int i = 0; i < 8; ++i) 
         {
             uv.xy = shadowCoord.xy + poisson8[i] * _UniqueShadowFilterWidth;
             shadow +=shadowCoord.z+0.002> DecodeFloatRGBA(tex2D(_UniqueShadowTexture, uv))? 1.0 : 0.0;
         }
         return lerp(1,shadow/8,_UniqueShadowStrength);;
-        
     }
 
-
-    float RotatedPoissonDisk(half3 worldPos)
+//旋轉泊松分佈
+    float UniqueShadowPoissonPCFRotate(half3 worldPos)
     {
         float4 shadowCoord=TransformWorldToShadowCoord(worldPos);
         float shadow = 0.0;
