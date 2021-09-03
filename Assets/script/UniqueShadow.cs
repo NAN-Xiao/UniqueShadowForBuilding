@@ -83,12 +83,12 @@ public class UniqueShadow : MonoBehaviour
         InspectionShadowMap();
         switch (ShadwoFilterType)
         {
-        
             case FilterType.ESM:
                 m_depthCopy.SetFloat(_BLURSIZE, m_blur2Copy);
                 m_depthCopy.SetFloat("_MainTex_TexelSize", m_shadowMapSize);
                 m_depthCopy.SetFloat(_ESMConst, m_ESMConst);
-                Graphics.Blit(m_renderTarget, m_shadowMap, m_depthCopy, 2);
+                Graphics.Blit(m_renderTarget, m_shadowMap_template, m_depthCopy, 2);
+                Graphics.Blit(m_shadowMap_template, m_shadowMap, m_depthCopy, 0);
                 break;
             case FilterType.VSM:
                 // CheckShadowMap();
@@ -98,6 +98,7 @@ public class UniqueShadow : MonoBehaviour
                 Graphics.Blit(m_shadowMap_template, m_shadowMap, m_depthCopy, 0);
                 break;
         }
+
         UpdateUniforms();
     }
 
@@ -149,34 +150,39 @@ public class UniqueShadow : MonoBehaviour
         {
             var m = m_mts[i];
             m.EnableKeyword(UNIQUE_SHADOW);
+            m.SetMatrix(_UniqueShadowMatrix, m_shadowMatrix);
+            m.SetFloat(_UniqueShadowStrength, Mathf.Clamp01(strength));
+            m.SetFloat(_UniqueShadowMapSize, m_shadowMapSize);
+            m.SetFloat(_UniqueShadowFilterWidth, m_softFactor / m_shadowMapSize);
             switch (ShadwoFilterType)
             {
                 
                 case FilterType.ESM:
                     m.SetFloat(_ESMConst, m_ESMConst);
                     m.SetTexture(_UniqueShadowTexture, m_shadowMap);
+                    m.EnableKeyword("Shadow_ESM");
                     break;
                 case FilterType.VSM:
                     m.SetFloat("_VSMMin", m_VSMMin);
                     m.SetTexture(_UniqueShadowTexture, m_shadowMap);
+                    m.EnableKeyword("Shadow_VSM");
                     break;
                 default:
                     m.SetTexture(_UniqueShadowTexture, m_renderTarget);
                     break;
             }
-            m.SetMatrix(_UniqueShadowMatrix, m_shadowMatrix);
-            m.SetFloat(_UniqueShadowStrength, Mathf.Clamp01(strength));
-            m.SetFloat(_UniqueShadowMapSize, m_shadowMapSize);
-            m.SetFloat(_UniqueShadowFilterWidth, m_softFactor / m_shadowMapSize);
+
+          
         }
     }
 
     void UpdateBounds()
     {
-        if (m_renders == null||m_renders.Count<=0)
+        if (m_renders == null || m_renders.Count <= 0)
         {
             return;
         }
+
         m_bounds = new Bounds(transform.position, Vector3.one * 0.1f);
         foreach (var m in m_renders)
         {
@@ -185,6 +191,7 @@ public class UniqueShadow : MonoBehaviour
                 m_bounds.Encapsulate(m.bounds);
             }
         }
+
         m_radius = m_bounds.extents.magnitude;
     }
 
@@ -205,9 +212,12 @@ public class UniqueShadow : MonoBehaviour
         //   m_shadowCamera.enabled=false;
         if (m_renderTarget == null)
         {
-            m_renderTarget = RenderTexture.GetTemporary(m_shadowMapSize, m_shadowMapSize, 16, RenderTextureFormat.Depth);
+            m_renderTarget =RenderTexture.GetTemporary(m_shadowMapSize, m_shadowMapSize, 16, RenderTextureFormat.Depth);
             m_renderTarget.filterMode = FilterMode.Point;
             m_renderTarget.wrapMode = TextureWrapMode.Clamp;
+            #if UNITY_EDITOR
+            m_renderTarget.name = "LIGHT SHADOW MAP";
+#endif
         }
 
         m_shadowCamera.targetTexture = m_renderTarget;
@@ -228,79 +238,90 @@ public class UniqueShadow : MonoBehaviour
 
     void InspectionShadowMap()
     {
-//        if (m_curQuality != ShadwoQuality || m_shadowMap == null || ShadwoFilterType != FilterType.PCF)
-//        {
-//            ReCreatShadowMap();
-//            m_curQuality = ShadwoQuality;
-//            return;
-//        }
-        if (m_shadowMap_template != null) RenderTexture.ReleaseTemporary(m_shadowMap_template);
-        if (m_shadowMap != null) RenderTexture.ReleaseTemporary(m_shadowMap);
-    }
-
-    void ReCreatShadowMap()
-    {
-        if (m_renderTarget==null)
+        if (m_renderTarget == null)
         {
             return;
         }
-        
-        m_descriptor = m_renderTarget.descriptor;
-        if (ShadwoQuality == ShadowMapRes.High)
-        {
-            m_descriptor.colorFormat = RenderTextureFormat.RGFloat;
-        }
-        else
-        {
-            m_descriptor.colorFormat = RenderTextureFormat.RGHalf;
-        }
 
-        m_shadowMap_template = RenderTexture.GetTemporary(m_descriptor);
-        m_shadowMap = RenderTexture.GetTemporary(m_descriptor);
-    }
-
-    //初始化材质和mesh
-    void GatherRendersInfo()
-    {
-        InitMaterial();
-        m_renders = transform.GetComponentsInChildren<Renderer>().ToList();
-        m_mts = new List<Material>();
-        foreach (var r in m_renders)
+        if (ShadwoFilterType != FilterType.PCF)
         {
-            if (r.gameObject.active == false)
+            if (m_curQuality != ShadwoQuality || m_shadowMap == null)
             {
-                continue;
+                ReCreatShadowMap();
+                m_curQuality = ShadwoQuality;
+                return;
             }
 
-            var mt = r.sharedMaterials;
-            foreach (var m in mt)
+            if (m_shadowMap_template != null)
             {
-                if (m_mts.Contains(m)) continue;
-                m_mts.Add(m);
+                RenderTexture.ReleaseTemporary(m_shadowMap_template);
+            }
+
+            if (m_shadowMap != null)
+            {
+                RenderTexture.ReleaseTemporary(m_shadowMap);
             }
         }
     }
 
-    private void OnDrawGizmos()
-    {
-        if (m_bounds != null)
+    void ReCreatShadowMap()
         {
-            Gizmos.DrawWireSphere(m_bounds.center, m_bounds.extents.magnitude);
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(m_bounds.center, 0.5f);
+            m_descriptor = m_renderTarget.descriptor;
+            if (ShadwoQuality == ShadowMapRes.High)
+            {
+                m_descriptor.colorFormat = RenderTextureFormat.RGFloat;
+            }
+            else
+            {
+                m_descriptor.colorFormat = RenderTextureFormat.RGHalf;
+            }
+            Debug.LogError(("re gereate maps"));
+             m_shadowMap_template = RenderTexture.GetTemporary(m_descriptor);
+              m_shadowMap = RenderTexture.GetTemporary(m_descriptor);
         }
-    }
+
+        //初始化材质和mesh
+        void GatherRendersInfo()
+        {
+            InitMaterial();
+            m_renders = transform.GetComponentsInChildren<Renderer>().ToList();
+            m_mts = new List<Material>();
+            foreach (var r in m_renders)
+            {
+                if (r.gameObject.active == false)
+                {
+                    continue;
+                }
+
+                var mt = r.sharedMaterials;
+                foreach (var m in mt)
+                {
+                    if (m_mts.Contains(m)) continue;
+                    m_mts.Add(m);
+                }
+            }
+        }
+
+        void OnDrawGizmos()
+        {
+            if (m_bounds != null)
+            {
+                Gizmos.DrawWireSphere(m_bounds.center, m_bounds.extents.magnitude);
+                Gizmos.color = Color.red;
+                Gizmos.DrawWireSphere(m_bounds.center, 0.5f);
+            }
+        }
 
 
-    private void OnDisable()
-    {
-        if (m_renderTarget != null) RenderTexture.ReleaseTemporary(m_renderTarget);
-        if (m_shadowMap != null) RenderTexture.ReleaseTemporary(m_shadowMap);
-        if (m_shadowMap_template != null) RenderTexture.ReleaseTemporary(m_shadowMap_template);
-        for (int i = 0, n = m_mts.Count; i < n; ++i)
+        void OnDisable()
         {
-            var m = m_mts[i];
-            m.DisableKeyword(UNIQUE_SHADOW);
+            if (m_renderTarget != null) RenderTexture.ReleaseTemporary(m_renderTarget);
+            if (m_shadowMap != null) RenderTexture.ReleaseTemporary(m_shadowMap);
+            if (m_shadowMap_template != null) RenderTexture.ReleaseTemporary(m_shadowMap_template);
+            for (int i = 0, n = m_mts.Count; i < n; ++i)
+            {
+                var m = m_mts[i];
+                m.DisableKeyword(UNIQUE_SHADOW);
+            }
         }
     }
-}

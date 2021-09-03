@@ -67,7 +67,7 @@
     float _UniqueShadowMapSize;
     float _ESMConst;
     float _VSMMin;
-
+    
     inline float remapping(float shadow_factor, float minVal)
     {
         return saturate((shadow_factor - minVal) / (1.0f - minVal));
@@ -82,29 +82,10 @@
     {
         return mul(_UniqueShadowMatrix, float4(worldPos, 1.0));
     }
-    
-    
-    
-    
-    ///nor set min
-    float Chebyshev2(float2 moments, float mean, float minVariance) 
-    { 
-        float shadow =0.0f; 
-        float variance = moments.y - (moments.x * moments.x);
-        variance = max(variance, 0.000001f); 
-        float d = mean - moments.x; 
-        shadow = variance / (variance + (d * d)); 
-        float amount = 0.6f;
-        shadow = clamp((shadow - amount) / (1.0f - amount), 0.0f, 1.0f); 
-        return shadow;
-    }
-    
     inline float Chebyshev(float2 moments, float mean)
     {
-        float variance = moments.y - (moments.x * moments.x);
-        variance = max(variance, 0.0001);
+        float variance =max( moments.y - (moments.x * moments.x),0.0002);
         float d = mean - moments.x;
-
         float pMax = remapping(variance / (variance + (d * d)), _VSMMin);
 
         #if UNITY_REVERSED_Z
@@ -117,7 +98,6 @@
             return max(p, pMax);
         #endif
     }
-
     // From http://fabiensanglard.net/shadowmappingVSM/index.php
     float chebyshevUpperBound(float3 worldPos)
     {
@@ -147,23 +127,19 @@
         float p = Chebyshev(shadow,shadowCoord.z/shadowCoord.w);//
         return p;
     }
-
-
-//esm
+    //esm
     half UniqueShadowESMFilter(half3 worldPos)
     {
         float4 shadowCoord=TransformWorldToShadowCoord(worldPos);
-        half shadow =( tex2D(_UniqueShadowTexture, shadowCoord)).g;
+        half shadow =( tex2D(_UniqueShadowTexture, shadowCoord)).r;
         #if UNITY_REVERSED_Z
-            shadow = saturate(exp(_ESMConst * (shadowCoord.z)) * shadow);
+            shadow = saturate(exp(_ESMConst * shadowCoord.z) * shadow);
         #else
-            // e^(-cz) * e^(cd)//
-            shadow = saturate(exp(-_ESMConst * shadowCoord.z+0.02) * shadow);
+            // e^(-cz) * e^(cd)
+            shadow = saturate(exp(-_ESMConst * shadowCoord.z) * shadow);
         #endif
-        return shadow*shadow;
+        return shadow;
     }
-
-
     ///new nvidia paper
     // float ChebyshevUpperBound(float2 moments, float distance)
     // {
@@ -187,9 +163,40 @@
         //     return ChebyshevUpperBound(Moments, shadowCoord.z/shadowCoord.w); 
     // } 
     ///new nvidia paper
-    
-    
-    
+    static const int kernelSampleCount = 16;
+    static const float2 kernel[kernelSampleCount] = {
+        float2(0, 0),
+        float2(0.54545456, 0),
+        float2(0.16855472, 0.5187581),
+        float2(-0.44128203, 0.3206101),
+        float2(-0.44128197, -0.3206102),
+        float2(0.1685548, -0.5187581),
+        float2(1, 0),
+        float2(0.809017, 0.58778524),
+        float2(0.30901697, 0.95105654),
+        float2(-0.30901703, 0.9510565),
+        float2(-0.80901706, 0.5877852),
+        float2(-1, 0),
+        float2(-0.80901694, -0.58778536),
+        float2(-0.30901664, -0.9510566),
+        float2(0.30901712, -0.9510565),
+        float2(0.80901694, -0.5877853),
+    };
+    half UniqueShadowPCF(half3 worldPos)
+    {
+        half shadow = 0.f;
+        float4 shadowCoord=TransformWorldToShadowCoord(worldPos);
+        
+        for (int x = 0; x < 4; x++)
+        {
+            for(int y=0;y<4;y++)
+            {
+                float2 uv=shadowCoord+float2(x,y)*0.5*_UniqueShadowFilterWidth;
+                shadow +=shadowCoord.z+0.002> DecodeFloatRGBA(tex2D(_UniqueShadowTexture, uv))? 1.0 : 0.0;
+            }
+        }
+        return shadow/4;//
+    }
     //泊松分佈
     half UniqueShadowPoissonPCF(half3 worldPos)
     {
@@ -197,15 +204,16 @@
         // shadowCoord.xyz/shadowCoord.w;
         half4 uv = shadowCoord;
         half shadow = 0.f;
-        for(int i = 0; i < 8; ++i) 
+        for(int i = 0; i < 32; ++i) 
         {
-            uv.xy = shadowCoord.xy + poisson8[i] * _UniqueShadowFilterWidth;
+            uv.xy = shadowCoord.xy + nvsf_Poisson32[i] * (_UniqueShadowFilterWidth);
             shadow +=shadowCoord.z+0.002> DecodeFloatRGBA(tex2D(_UniqueShadowTexture, uv))? 1.0 : 0.0;
         }
-        return lerp(1,shadow/8,_UniqueShadowStrength);;
+        shadow/=32;
+        return  lerp(1,shadow,_UniqueShadowStrength);
     }
 
-//旋轉泊松分佈
+    //旋轉泊松分佈
     float UniqueShadowPoissonPCFRotate(half3 worldPos)
     {
         float4 shadowCoord=TransformWorldToShadowCoord(worldPos);
@@ -223,6 +231,22 @@
         shadow *= 0.25;
         return lerp(1,shadow,_UniqueShadowStrength);
     }
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #endif
