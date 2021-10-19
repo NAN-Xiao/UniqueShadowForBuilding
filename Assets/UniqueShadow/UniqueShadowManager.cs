@@ -64,7 +64,19 @@ public class UniqueShadowManager : MonoBehaviour
         m_ObjectAABB.UpdateAABB(m_ObjBounds);
         m_ObjectAABB.TransformLightSpace(m_Light);
         RenderUnique();
+        var vp1 = m_ShadowCamera.worldToCameraMatrix*GL.GetGPUProjectionMatrix(m_ShadowCamera.projectionMatrix,false);
         RenderCSM();
+        var vp2 = m_ShadowCamera.worldToCameraMatrix*GL.GetGPUProjectionMatrix(m_ShadowCamera.projectionMatrix,false);
+        Debug.LogError(GL.GetGPUProjectionMatrix(m_ShadowCamera.projectionMatrix,false));
+        Matrix4x4[] shadowVP = new[] {vp1, vp2};
+        SetShader(shadowVP);
+        
+        
+    }
+
+    public void SetShader(  Matrix4x4[] shadowVP )
+    {
+        
     }
 
     //rt0

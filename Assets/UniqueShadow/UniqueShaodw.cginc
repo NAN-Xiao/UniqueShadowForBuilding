@@ -1,4 +1,6 @@
 ﻿﻿#ifndef UNITQUESHADOW
+// Upgrade NOTE: excluded shader from DX11, OpenGL ES 2.0 because it uses unsized arrays
+#pragma exclude_renderers d3d11 gles
     #define UNITQUESHADOW
     #include "UnityCG.cginc"
     
@@ -68,6 +70,8 @@
     float _UniqueShadowMapSize;
     float _ESMConst;
     float _VSMMin;
+    
+    float4x4 [] _UniqueShadowMatrix;
     float4 TransformWorldToShadowCoord(float3 worldPos)
     {
         return mul(_UniqueShadowMatrix, float4(worldPos, 1.0));
