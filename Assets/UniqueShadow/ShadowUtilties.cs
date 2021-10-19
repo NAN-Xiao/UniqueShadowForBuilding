@@ -28,12 +28,8 @@ public class ShadowUtilties
     /// 获取摄像机的阴影视锥在世界空间下的八个角点
     /// clip阴影距离的远裁剪面
     /// </summary>
-    public void GetViewFrustum(Camera camera, float clip, ref List<Vector3> viewcorner)
+    public static  void GetViewFrustum(Camera camera, float clip, ref Vector3[] viewcorner)
     {
-        if (viewcorner == null)
-        {
-            viewcorner = new List<Vector3>();
-        }
 
         var tan = Mathf.Tan(Mathf.Deg2Rad * (camera.fieldOfView / 2f));
 
@@ -56,20 +52,19 @@ public class ShadowUtilties
         Vector3 pos7 = new Vector3(fx, fy, fz);
         Vector3 pos8 = new Vector3(-fx, fy, fz);
 
-//        viewcorner
-//        viewcorner.Add(camera.transform.TransformPoint(pos1));
-//        viewcorner.Add(camera.transform.TransformPoint(pos2));
-//        viewcorner.Add(camera.transform.TransformPoint(pos3));
-//        viewcorner.Add(camera.transform.TransformPoint(pos4));
-//
-//        viewcorner.Add(camera.transform.TransformPoint(pos5));
-//        viewcorner.Add(camera.transform.TransformPoint(pos6));
-//        viewcorner.Add(camera.transform.TransformPoint(pos7));
-//        viewcorner.Add(camera.transform.TransformPoint(pos8));
-        //return list;
+        viewcorner[0] = camera.transform.TransformPoint(pos1);
+        viewcorner[1] = camera.transform.TransformPoint(pos2);
+        viewcorner[2] = camera.transform.TransformPoint(pos3);
+        viewcorner[3] = camera.transform.TransformPoint(pos4);
+        viewcorner[4] = camera.transform.TransformPoint(pos5);
+        viewcorner[5] = camera.transform.TransformPoint(pos6);
+        viewcorner[6] = camera.transform.TransformPoint(pos7);
+        viewcorner[7] = camera.transform.TransformPoint(pos8);
     }
 
-    /// <summary>
+    #region MyRegion
+
+     /// <summary>
     /// 获取包view在灯光下的包围盒 返回vector3数组
     /// 下标9为摄像机位置
     /// /// </summary>
@@ -118,6 +113,9 @@ public class ShadowUtilties
 //        list[8] = pos;
 //        return list;
 //    }
+
+    #endregion
+   
     public static void TransformTOLightSpace(Light light, ref Vector3[] corners, out Vector3 min, out Vector3 max,
         out Vector3 size)
     {
