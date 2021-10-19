@@ -171,8 +171,9 @@ public class UniqueShadow : MonoBehaviour
                     m.SetTexture(_UniqueShadowTexture, m_renderTarget);
                     break;
             }
+            m.SetTexture("u_UniqueShadowTexture", m_shadowMap);
 
-          
+
         }
     }
 
@@ -212,8 +213,8 @@ public class UniqueShadow : MonoBehaviour
         //   m_shadowCamera.enabled=false;
         if (m_renderTarget == null)
         {
-            m_renderTarget =RenderTexture.GetTemporary(m_shadowMapSize, m_shadowMapSize, 16, RenderTextureFormat.Depth);
-            m_renderTarget.filterMode = FilterMode.Point;
+            m_renderTarget =RenderTexture.GetTemporary(m_shadowMapSize, m_shadowMapSize, 16, RenderTextureFormat.Shadowmap);
+            m_renderTarget.filterMode = FilterMode.Trilinear;
             m_renderTarget.wrapMode = TextureWrapMode.Clamp;
             #if UNITY_EDITOR
             m_renderTarget.name = "LIGHT SHADOW MAP";
