@@ -11,40 +11,61 @@ public class UniqueShadowManager : MonoBehaviour
     public Light m_Light;
     public Camera m_ShadowCamera;
     public Bounds m_ObjBounds;
+    [Range(0,1f)] public float m_Strength;
+    [Range(0, 0.1f)] public float m_Bias;
     public float m_ShadowDistance;
-
+    public float m_zOffset = 0.1f;
     private List<Renderer> m_Renders = new List<Renderer>();
     private ObjectAABB m_ObjectAABB;
-
     private ObjectAABB m_ViewAABB;
 
-    //  private Vector3[] m_ObjectAABB=new Vector3[8];
-    public float m_zOffset = 0.1f;
-
     //rts
-    public RenderTexture[] m_ShadowRT;
+    public RenderTexture m_ShadowRT;
 
+
+    //private
+    private Matrix4x4[] m_shadowVP = new Matrix4x4[2];
+    private int _ShadowMapID;
+    private int _ShadowMatrixsID;
+    private int _ShadowFarID;
+    private int _ShadowNearID;
+    private int _StrengthFarID;
     private void OnEnable()
     {
         m_Camera = Camera.main;
-        m_ShadowRT = new RenderTexture [2];
-        for (int i = 0; i < m_ShadowRT.Length; i++)
-        {
-            m_ShadowRT[i] = RenderTexture.GetTemporary(1024, 1024);
-            m_ShadowRT[i].format = RenderTextureFormat.Depth;
-        }
 
+        m_ShadowRT = RenderTexture.GetTemporary(2048, 1024);
+        m_ShadowRT.format = RenderTextureFormat.Depth;
+        m_ShadowRT.name = "_uniqueShadowMap";
+        m_ShadowRT.filterMode = FilterMode.Bilinear;
+        m_ShadowRT.wrapMode = TextureWrapMode.Clamp;
         m_ObjectAABB = new ObjectAABB();
         m_ViewAABB = new ObjectAABB();
+
+        InitShaderProperties();
     }
 
     private void Update()
     {
         UpdateBounds();
-//      ShadowUtilties.GetObjectAABB(m_Light,m_ObjBounds, ref m_ObjectAABB);
         RenderShadow();
-    }
+        //set shader
+        if (m_ShadowRT != null)
+        {
+            foreach (var r in m_Renders)
+            {
+                r.sharedMaterial.SetTexture(_ShadowMapID, m_ShadowRT);
+            }
+        }
 
+        Shader.SetGlobalMatrixArray(_ShadowMatrixsID, m_shadowVP);
+
+        float clip = m_ViewAABB.m_Size.x > m_ViewAABB.m_Size.y ? m_ViewAABB.m_Size.x : m_ViewAABB.m_Size.y;
+       // clip = clip > m_ViewAABB.m_Size.z ? clip : m_ViewAABB.m_Size.z;
+        Shader.SetGlobalFloat(_ShadowFarID, m_ShadowDistance);
+        Shader.SetGlobalMatrix("_W2CameraPos", m_Camera.worldToCameraMatrix);
+        Shader.SetGlobalFloat(_StrengthFarID, m_Strength);
+    }
 
     void RenderShadow()
     {
@@ -53,7 +74,7 @@ public class UniqueShadowManager : MonoBehaviour
             m_ShadowCamera = new GameObject("___Light_Camera___").AddComponent<Camera>();
             m_ShadowCamera.depth = -1000;
             m_ShadowCamera.orthographic = true;
-            m_ShadowCamera.clearFlags = CameraClearFlags.Depth;
+            m_ShadowCamera.clearFlags = CameraClearFlags.SolidColor;
         }
 
         if (m_ObjBounds == null || m_Light == null)
@@ -63,62 +84,75 @@ public class UniqueShadowManager : MonoBehaviour
 
         m_ObjectAABB.UpdateAABB(m_ObjBounds);
         m_ObjectAABB.TransformLightSpace(m_Light);
+        m_ShadowCamera.targetTexture = m_ShadowRT;
+        m_ShadowCamera.transform.forward = m_Light.transform.forward;
+        m_ShadowCamera.nearClipPlane = 0.01f;
+        m_ShadowCamera.backgroundColor = Color.white;
+        //unique
         RenderUnique();
-        var vp1 = m_ShadowCamera.worldToCameraMatrix*GL.GetGPUProjectionMatrix(m_ShadowCamera.projectionMatrix,false);
+        var proj = m_ShadowCamera.projectionMatrix;
+        proj.m22 +=m_Bias;
+        var vp0 = GL.GetGPUProjectionMatrix(proj, false) *
+                  m_ShadowCamera.worldToCameraMatrix;
+        m_shadowVP[0] = vp0;
+
+        //csm
         RenderCSM();
-        var vp2 = m_ShadowCamera.worldToCameraMatrix*GL.GetGPUProjectionMatrix(m_ShadowCamera.projectionMatrix,false);
-        Debug.LogError(GL.GetGPUProjectionMatrix(m_ShadowCamera.projectionMatrix,false));
-        Matrix4x4[] shadowVP = new[] {vp1, vp2};
-        SetShader(shadowVP);
-        
-        
+        proj = m_ShadowCamera.projectionMatrix;
+        proj.m22 +=m_Bias;
+        var vp1 = GL.GetGPUProjectionMatrix(proj, false) *
+                  m_ShadowCamera.worldToCameraMatrix;
+        m_shadowVP[1] = vp1;
     }
 
-    public void SetShader(  Matrix4x4[] shadowVP )
-    {
-        
-    }
 
     //rt0
     void RenderUnique()
     {
         //setcamera
-        m_ShadowCamera.targetTexture = m_ShadowRT[0];
-
         m_ShadowCamera.transform.position = m_ObjectAABB.m_Center;
-        m_ShadowCamera.transform.rotation = m_Light.transform.rotation;
         m_ShadowCamera.aspect = m_ObjectAABB.m_Size.x / m_ObjectAABB.m_Size.y;
         m_ShadowCamera.orthographicSize = m_ObjectAABB.m_Size.y * 0.5f;
+        m_ShadowCamera.rect = new Rect(0f, 0, 0.5f, 1);
+
         //offset
         m_ShadowCamera.transform.position -= m_ShadowCamera.transform.forward * m_zOffset;
-        m_ShadowCamera.farClipPlane = m_ObjectAABB.m_Max.z - m_ObjectAABB.m_Min.z + m_zOffset;
+        m_ShadowCamera.farClipPlane = m_ObjectAABB.m_Max.z - m_ObjectAABB.m_Min.z - m_zOffset;
         m_ShadowCamera.Render();
     }
 
     //rt1
     void RenderCSM()
     {
-       
         ShadowUtilties.GetViewFrustum(m_Camera, m_ShadowDistance, ref m_ViewAABB.m_Corners);
         m_ViewAABB.TransformLightSpace(m_Light);
-        
-        
-        m_ShadowCamera.targetTexture = m_ShadowRT[1];
         m_ShadowCamera.transform.position = m_ViewAABB.m_Center;
-        m_ShadowCamera.transform.rotation = m_Light.transform.rotation;
         m_ShadowCamera.aspect = m_ViewAABB.m_Size.x / m_ViewAABB.m_Size.y;
         m_ShadowCamera.orthographicSize = m_ViewAABB.m_Size.y * 0.5f;
+        m_ShadowCamera.rect = new Rect(0.5f, 0, 1, 1);
         //offset
+        if (m_ViewAABB.m_Min.z > m_ObjectAABB.m_Min.z)
+        {
+            m_ViewAABB.m_Min.z = m_ObjectAABB.m_Min.z;
+        }
+
         m_ShadowCamera.transform.position -= m_ShadowCamera.transform.forward * m_zOffset;
-        m_ShadowCamera.farClipPlane = m_ViewAABB.m_Max.z - m_ViewAABB.m_Min.z + m_zOffset;
+        m_ShadowCamera.farClipPlane = m_ViewAABB.m_Max.z - m_ViewAABB.m_Min.z - m_zOffset;
         m_ShadowCamera.Render();
     }
 
+    void InitShaderProperties()
+    {
+        _ShadowMapID = Shader.PropertyToID("_UniqueShadowTexture");
+        _ShadowMatrixsID = Shader.PropertyToID("_UniqueShadowMatrix");
+        _ShadowFarID = Shader.PropertyToID("_SplitFar");
+        _StrengthFarID =Shader.PropertyToID("_UniqueShadowStrength"); 
+    }
 
     /// <summary>
     /// 获取所有的render组件
     /// </summary>
-    public void UpdateBounds()
+    void UpdateBounds()
     {
         if (m_Renders.Count <= 0)
         {
@@ -148,15 +182,9 @@ public class UniqueShadowManager : MonoBehaviour
         }
     }
 
+    #region Gizmos for Debug
 
-//
-//
-//   public void SetVector(int x, int y, int z, ref Vector3 point)
-//   {
-//      point.Set(x,y,z);
-//   }
-
-    private void OnDrawGizmos()
+    void OnDrawGizmos()
     {
         /// Gizmos.DrawWireSphere(m_ObjBounds.center,m_ObjBounds.extents.sqrMagnitude);
 
@@ -166,11 +194,11 @@ public class UniqueShadowManager : MonoBehaviour
     }
 
     void DrawCamera()
-    {  
+    {
         ShadowUtilties.GetViewFrustum(m_Camera, m_ShadowDistance, ref m_ViewAABB.m_Corners);
         Vector3[] points = m_ViewAABB.m_Corners;
-        
-        Gizmos.color=Color.cyan;
+
+        Gizmos.color = Color.cyan;
         Gizmos.DrawLine(points[0], points[1]);
         Gizmos.DrawLine(points[1], points[2]);
         Gizmos.DrawLine(points[2], points[3]);
@@ -185,7 +213,7 @@ public class UniqueShadowManager : MonoBehaviour
         Gizmos.DrawLine(points[1], points[5]);
         Gizmos.DrawLine(points[2], points[6]);
         Gizmos.DrawLine(points[3], points[7]);
-        
+
         m_ViewAABB.TransformLightSpace(m_Light);
         points = m_ViewAABB.m_Corners;
 
@@ -195,6 +223,7 @@ public class UniqueShadowManager : MonoBehaviour
             var pp = m_Light.transform.TransformPoint(points[i]);
             ShadowUtilties.SetCorners(i, pp.x, pp.y, pp.z, ref points);
         }
+
         Gizmos.color = Color.green;
         Gizmos.DrawSphere(m_ObjectAABB.m_Center, 0.1f);
         Gizmos.DrawLine(points[0], points[1]);
@@ -264,4 +293,6 @@ public class UniqueShadowManager : MonoBehaviour
         Gizmos.DrawLine(points[2], points[6]);
         Gizmos.DrawLine(points[3], points[7]);
     }
+
+    #endregion
 }

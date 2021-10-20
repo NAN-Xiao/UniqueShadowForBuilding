@@ -15,11 +15,9 @@
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // make fog work
-            #pragma multi_compile_fog
 
             #include "UnityCG.cginc"
-            #include "Assets/UniqueShadow/UniqueShadow_ShadowSample.cginc"
+            #include "UniqueShaodw.cginc"
 
             struct appdata
             {
@@ -30,9 +28,8 @@
             struct v2f
             {
                 float2 uv : TEXCOORD0;
-                UNITY_FOG_COORDS(1)
                 float4 vertex : SV_POSITION;
-                float4 uniqueShadowPos:TEXCOORD2;
+                UNITY_SHADOW_COORDS(2)
                 float4 posWorld : TEXCOORD3;
 
             };
@@ -42,11 +39,10 @@
 
             v2f vert (appdata v)
             {
-                v2f o;
+                v2f o=(v2f)0;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                UNIQUE_SHADOW_TRANSFER(o)
-                UNITY_TRANSFER_FOG(o,o.vertex);
+                UNIQUE_SHADOW_TRANSFER(v)
                 return o;
             }
 
@@ -54,9 +50,7 @@
             {
                 // sample the texture
                 fixed4 col = tex2D(_MainTex, i.uv);
-                col.rgb=UNIQUE_SHADOW_SAMPLE(i);
-                // apply fog
-                UNITY_APPLY_FOG(i.fogCoord, col);
+                col.rgb*=UNITY_SHADOW_ATTENUATION(i);
                 return col;
             }
             ENDCG
