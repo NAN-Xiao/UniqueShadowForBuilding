@@ -119,6 +119,7 @@
 			float4 frag(v2f i) : SV_Target
 			{
 				SHADOW_CASTER_FRAGMENT(i)
+				return float4(1,0,1,0);
 			}
 			ENDCG
 		}

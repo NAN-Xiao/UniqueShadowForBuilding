@@ -14,6 +14,7 @@ public class UniqueShadowManager : MonoBehaviour
     [Range(0,1f)] public float m_Strength;
     [Range(0, 0.1f)] public float m_Bias2AABB;
     [Range(0, 0.1f)] public float m_Bias2View;
+    [Range(0, 1f)] public float m_NormalBias=0.4f;
     public float m_ShadowDistance;
     public float m_zOffset = 0.1f;
     private List<Renderer> m_Renders = new List<Renderer>();
@@ -56,6 +57,7 @@ public class UniqueShadowManager : MonoBehaviour
             foreach (var r in m_Renders)
             {
                 r.sharedMaterial.SetTexture(_ShadowMapID, m_ShadowRT);
+                r.sharedMaterial.SetVector("unity_LightShadowBias",new Vector4(0,0,0,m_NormalBias));
             }
         }
 
@@ -193,9 +195,9 @@ public class UniqueShadowManager : MonoBehaviour
         DrawObjecAABB();
         DrawCamera();
         Gizmos.color = Color.red;
-        ShadowUtilties.GetViewFrustum(m_Camera, m_ShadowDistance, ref m_ViewAABB.m_Corners);
-        m_ViewAABB.TransformLightSpace(m_Light);
-        Gizmos.DrawSphere(m_ShadowCamera.transform.TransformPoint(m_ViewAABB.m_Min),0.1f);
+//        ShadowUtilties.GetViewFrustum(m_Camera, m_ShadowDistance, ref m_ViewAABB.m_Corners);
+//        m_ViewAABB.TransformLightSpace(m_Light);
+//        Gizmos.DrawSphere(m_ShadowCamera.transform.TransformPoint(m_ViewAABB.m_Min),0.1f);
     }
 
     void DrawCamera()
@@ -230,7 +232,7 @@ public class UniqueShadowManager : MonoBehaviour
         }
 
         Gizmos.color = Color.green;
-        Gizmos.DrawSphere(m_ViewAABB.m_Center, 0.1f);
+        Gizmos.DrawSphere(m_ViewAABB.m_Center, 0.05f);
         Gizmos.DrawLine(points[0], points[1]);
         Gizmos.DrawLine(points[1], points[2]);
         Gizmos.DrawLine(points[2], points[3]);
@@ -282,7 +284,7 @@ public class UniqueShadowManager : MonoBehaviour
 
 
         Gizmos.color = Color.green;
-        Gizmos.DrawSphere(m_ObjectAABB.m_Center, 0.1f);
+        Gizmos.DrawSphere(m_ObjectAABB.m_Center, 0.05f);
         Gizmos.DrawLine(points[0], points[1]);
         Gizmos.DrawLine(points[1], points[2]);
         Gizmos.DrawLine(points[2], points[3]);
