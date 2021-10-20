@@ -26,8 +26,6 @@ public class ObjectAABB
     {
         if (bounds != null)
         {
-            
-
             m_Min = bounds.max;
             m_Size = bounds.size;
             m_Max = bounds.max;
@@ -42,5 +40,6 @@ public class ObjectAABB
         ShadowUtilties.TransformTOLightSpace(light,ref m_Corners,out m_Min,out m_Max,out m_Size);
         var c=new Vector3(m_Min.x+m_Size.x/2,m_Min.y+m_Size.y/2,m_Min.z);
         m_Center = light.transform.TransformPoint(c);
+
     }
 }
