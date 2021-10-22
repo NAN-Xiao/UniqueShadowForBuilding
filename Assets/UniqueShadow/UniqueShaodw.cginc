@@ -79,7 +79,7 @@
       
       float weidth=length(WorldPos-_WorldSpaceCameraPos);
       float4 coord=sc0*(weidth>_SplitFar)+sc1*(weidth<_SplitFar);
-      float3 shadow=SampleShadowPCF3x3_4Tap(coord);
+      float3 shadow=SampleShaodowPoisson(coord);
       return  lerp(1,shadow,_UniqueShadowStrength);//  lerp(v,ab,w);
    }
    
