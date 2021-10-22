@@ -70,6 +70,7 @@
       sc1.x*=0.5;
       sc1.x+=0.5;
       
+      
       float weidth=length(WorldPos-_WorldSpaceCameraPos);
       float4 coord=sc0*(weidth>_SplitFar)+sc1*(weidth<_SplitFar);
       float3 shadow=SampleShaodowPoisson(coord);
