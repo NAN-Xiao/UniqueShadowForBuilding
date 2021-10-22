@@ -13,24 +13,20 @@
    };
 
    UNITY_DECLARE_SHADOWMAP(_UniqueShadowTexture);
-   //sampler2D _UniqueShadowTexture;
    float _UniqueShadowFilterWidth;
    float4x4 _UniqueShadowMatrix[2];
    float _UniqueShadowStrength;
-
    float4 _UniqueShadowMapSize;
-   float _ESMConst;
-   float _VSMMin;
    float _SoftShadow;
    float _SplitFar;
+   //shadowcaster
+   #ifdef _UniqueShadowCaster
+      float3 _CustomLightDir;
+      float _NorBias;
+   #endif
 
-   
-    //shadowcaster
-    #ifdef _UniqueShadowCaster
-    float3 _CustomLightDir;
-                float _NorBias;
-    #endif
-
+   float _ESMConst;
+   float _VSMMin;
 
 
 
@@ -46,8 +42,8 @@
       return shadow*=0.25;
    }
 
-   float SampleShadowPCF3x3_4Tap(float3 uvd){
-      _UniqueShadowMapSize+=_SoftShadow;
+   float SampleShadowPCF3x3_4Tap(float3 uvd)
+   {
       float offsetX = _UniqueShadowMapSize.x * 0.5;
       float offsetY = _UniqueShadowMapSize.y * 0.5;
       float4 result;
@@ -58,13 +54,10 @@
       return dot(result,0.25);
    }
 
-
    half4 UniqueShadowUVW(float4 vpos)
    {
-      //      float4 WorldPos=mul(unity_ObjectToWorld,vpos);
-      return mul(unity_ObjectToWorld,vpos);;//mul(_UniqueShadowMatrix[0], float4(WorldPos.xyz, 1.f));
+      return mul(unity_ObjectToWorld,vpos);
    }
-
 
    float3 SampleUniqueShadow(float4 WorldPos)
    {
@@ -80,7 +73,9 @@
       float weidth=length(WorldPos-_WorldSpaceCameraPos);
       float4 coord=sc0*(weidth>_SplitFar)+sc1*(weidth<_SplitFar);
       float3 shadow=SampleShaodowPoisson(coord);
-      return  lerp(1,shadow,_UniqueShadowStrength);//  lerp(v,ab,w);
+
+      return  lerp(1,shadow,_UniqueShadowStrength);
+      
    }
    
    #define UNITY_SHADOW_COORDS(i)                                   half4 uniqueShadowPos : TEXCOORD##i ;
@@ -89,19 +84,19 @@
    
    
    
-         #ifdef _UniqueShadowCaster
-       float4 UniqueShaodwNormalBias(float4 vertex,float3 normal)
-    {
-            float3 WorldN=mul((float3x3)unity_ObjectToWorld,normal);
-                float Acos=dot(WorldN,WorldN);
-                float Asin=sqrt(1-Acos*Acos);
-                float bias=_NorBias*Asin;
-                float4 worldPos=mul(unity_ObjectToWorld,vertex);
-                worldPos.xyz-=WorldN*bias;
-				return  mul(UNITY_MATRIX_VP,worldPos);
-    }
+   #ifdef _UniqueShadowCaster
+      float4 UniqueShaodwNormalBias(float4 vertex,float3 normal)
+      {
+         float3 WorldN=mul((float3x3)unity_ObjectToWorld,normal);
+         float Acos=dot(WorldN,WorldN);
+         float Asin=sqrt(1-Acos*Acos);
+         float bias=_NorBias*Asin;
+         float4 worldPos=mul(unity_ObjectToWorld,vertex);
+         worldPos.xyz-=WorldN*bias;
+         return  mul(UNITY_MATRIX_VP,worldPos);
+      }
 
-   #define  UNIQUE_SHADOW_NORBIAS(o)                               o.pos= UniqueShaodwNormalBias(v.vertex, v.normal)
+      #define  UNIQUE_SHADOW_NORBIAS(o)                               o.pos= UniqueShaodwNormalBias(v.vertex, v.normal)
    #endif
    
    

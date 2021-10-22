@@ -7,10 +7,9 @@ using UnityEngine.Experimental.Rendering;
 [ExecuteInEditMode]
 public class UniqueShadowManager : MonoBehaviour
 {
-  
     public Camera m_Camera;
     public Light m_Light;
-    
+
     public Camera m_ShadowCamera;
     public Bounds m_ObjBounds;
     [Range(0, 1f)] public float m_Strength;
@@ -41,11 +40,24 @@ public class UniqueShadowManager : MonoBehaviour
 
     private const string m_CastShaderName = "Hidden/_UniqueShadowCaster";
     public Shader m_caterShader;
+
     private void OnEnable()
     {
         m_Camera = Camera.main;
-        m_ShadowRT = RenderTexture.GetTemporary(2048, 1024);
-        m_ShadowRT.format = RenderTextureFormat.Shadowmap;
+        RenderTextureFormat fmt;
+        //SUPPORT_SHADOWMAP??shadowmap:depthmap
+        if (SystemInfo.supportsShadows)
+        {
+            fmt= RenderTextureFormat.Shadowmap;
+            Shader.EnableKeyword("SUPPORT_SHADOWMAP");
+        }
+        else
+        {
+            fmt = RenderTextureFormat.Depth;
+            Shader.DisableKeyword("SUPPORT_SHADOWMAP");
+        }
+        Shader.EnableKeyword("SUPPORT_SHADOWMAP");
+        m_ShadowRT = RenderTexture.GetTemporary(2048, 1024,16,fmt);
         m_ShadowRT.name = "_uniqueShadowMap";
         m_ShadowRT.filterMode = FilterMode.Bilinear;
         m_ShadowRT.wrapMode = TextureWrapMode.Clamp;
@@ -58,6 +70,7 @@ public class UniqueShadowManager : MonoBehaviour
 
     private void Update()
     {
+     
         UpdateBounds();
         RenderShadow();
         //set shader
@@ -88,7 +101,7 @@ public class UniqueShadowManager : MonoBehaviour
             m_ShadowCamera.SetReplacementShader(m_caterShader, "RenderType");
             m_ShadowCamera.gameObject.hideFlags = HideFlags.HideInHierarchy;
         }
-       
+
         if (m_ObjBounds == null || m_Light == null)
         {
             return;
@@ -153,8 +166,8 @@ public class UniqueShadowManager : MonoBehaviour
         _ShadowFarID = Shader.PropertyToID("_SplitFar");
         _StrengthFarID = Shader.PropertyToID("_UniqueShadowStrength");
         _SoftID = Shader.PropertyToID("_SoftShadow");
-        _ShadowMapSizeID =Shader.PropertyToID("_UniqueShadowMapSize");
-        _LightdirID =Shader.PropertyToID("_CustomLightDir");
+        _ShadowMapSizeID = Shader.PropertyToID("_UniqueShadowMapSize");
+        _LightdirID = Shader.PropertyToID("_CustomLightDir");
     }
 
     /// <summary>
@@ -169,16 +182,19 @@ public class UniqueShadowManager : MonoBehaviour
             {
                 m_Renders.AddRange(c);
             }
+
             var r = gameObject.GetComponent<Renderer>();
             if (r != null)
             {
                 m_Renders.Add(r);
             }
         }
+
         if (m_Renders.Count <= 0)
         {
             return;
         }
+
         m_ObjBounds = new Bounds(transform.position, Vector3.zero);
         foreach (var r in m_Renders)
         {
@@ -192,7 +208,6 @@ public class UniqueShadowManager : MonoBehaviour
     void OnDrawGizmos()
     {
         /// Gizmos.DrawWireSphere(m_ObjBounds.center,m_ObjBounds.extents.sqrMagnitude);
-
 
         DrawObjecAABB();
         DrawCamera();

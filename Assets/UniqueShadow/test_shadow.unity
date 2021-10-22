@@ -156,13 +156,13 @@ Light:
   m_InnerSpotAngle: 21.80208
   m_CookieSize: 10
   m_Shadows:
-    m_Type: 0
+    m_Type: 1
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
     m_Bias: 0.005
-    m_NormalBias: 0.17
-    m_NearPlane: 0.1
+    m_NormalBias: 0.4
+    m_NearPlane: 0.46
     m_CullingMatrixOverride:
       e00: 1
       e01: 0
@@ -561,10 +561,10 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.01
-  far clip plane: 0.6773273
+  far clip plane: 1.3980652
   field of view: 60
   orthographic: 1
-  orthographic size: 0.25205266
+  orthographic size: 0.68208295
   m_Depth: -1000
   m_CullingMask:
     serializedVersion: 2
@@ -588,7 +588,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 931318895}
   m_LocalRotation: {x: 0.27667823, y: -0.14116842, z: 0.041129217, w: 0.9496468}
-  m_LocalPosition: {x: -0.3378426, y: 2.3347778, z: -0.94401175}
+  m_LocalPosition: {x: 0.40428236, y: 1.9768295, z: -0.33399}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -686,7 +686,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!64 &1257040693
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -719,7 +719,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 92d1a2f6edc344d45ae0c73695d788f8, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -756,8 +756,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1257040692}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 3.43}
+  m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 5
@@ -887,7 +887,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1533821725
 Transform:
   m_ObjectHideFlags: 0
@@ -1006,7 +1006,7 @@ Camera:
     height: 1
   near clip plane: 0.03
   far clip plane: 10
-  field of view: 35
+  field of view: 45
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -1039,8 +1039,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1607487802}
-  m_LocalRotation: {x: -0.20799196, y: -0.23589942, z: 0.051717028, w: -0.94784814}
-  m_LocalPosition: {x: -0.633, y: 2.29, z: -0.953}
+  m_LocalRotation: {x: -0.1798981, y: -0.2841346, z: 0.054172885, w: -0.9401966}
+  m_LocalPosition: {x: -0.24414748, y: 1.9196167, z: -0.4487164}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -1166,12 +1166,12 @@ MonoBehaviour:
   m_ObjBounds:
     m_Center: {x: -0.07200003, y: 1.1679999, z: 0.23426726}
     m_Extent: {x: 1.2767437, y: 1.2369921, z: 0.4437336}
-  m_Strength: 0.376
+  m_Strength: 1
   m_SoftShadow: 0
   m_Bias2AABB: 0.009
-  m_Bias2View: 0.02
-  m_NormalBias: 0.0004
-  m_ShadowDistance: 0.5
+  m_Bias2View: 0.0603
+  m_NormalBias: 0.0001
+  m_ShadowDistance: 1
   m_zOffset: 0.1
   m_ShadowRT: {fileID: 0}
   m_caterShader: {fileID: 4800000, guid: 67d187a88f8894a4798913189dae4d11, type: 3}

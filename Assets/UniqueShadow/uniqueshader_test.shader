@@ -18,7 +18,7 @@
 
             #include "UnityCG.cginc"
             #include "UniqueShaodw.cginc"
-
+            #pragma multi_compile _ SUPPORT_SHADOWMAP 
             struct appdata
             {
                 float4 vertex : POSITION;
