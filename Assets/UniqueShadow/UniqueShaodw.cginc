@@ -22,7 +22,6 @@
    float _ESMConst;
    float _VSMMin;
    float _SoftShadow;
-   float4x4 _W2CameraPos;
    float _SplitFar;
 
    

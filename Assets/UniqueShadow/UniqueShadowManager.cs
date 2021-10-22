@@ -10,6 +10,7 @@ public class UniqueShadowManager : MonoBehaviour
   
     public Camera m_Camera;
     public Light m_Light;
+    
     public Camera m_ShadowCamera;
     public Bounds m_ObjBounds;
     [Range(0, 1f)] public float m_Strength;
@@ -35,7 +36,8 @@ public class UniqueShadowManager : MonoBehaviour
     private int _ShadowNearID;
     private int _StrengthFarID;
     private int _SoftID;
-
+    private int _ShadowMapSizeID;
+    private int _LightdirID;
 
     private const string m_CastShaderName = "Hidden/_UniqueShadowCaster";
     public Shader m_caterShader;
@@ -66,14 +68,12 @@ public class UniqueShadowManager : MonoBehaviour
                 r.sharedMaterial.SetTexture(_ShadowMapID, m_ShadowRT);
             }
         }
-        //float clip = m_ViewAABB.m_Size.x > m_ViewAABB.m_Size.y ? m_ViewAABB.m_Size.x : m_ViewAABB.m_Size.y;
         Shader.SetGlobalMatrixArray(_ShadowMatrixsID, m_shadowVP);
         Shader.SetGlobalFloat(_ShadowFarID, m_ShadowDistance);
-        Shader.SetGlobalMatrix("_W2CameraPos", m_Camera.worldToCameraMatrix);
         Shader.SetGlobalFloat(_StrengthFarID, m_Strength);
         Shader.SetGlobalFloat(_SoftID, m_SoftShadow);
-        Shader.SetGlobalVector("_UniqueShadowSize", new Vector2(1024, 1024));
-        Shader.SetGlobalVector("_UniqueLightDir", m_ShadowCamera.transform.forward);
+        Shader.SetGlobalVector(_ShadowMapSizeID, new Vector2(1024, 1024));
+        Shader.SetGlobalVector(_LightdirID, m_ShadowCamera.transform.forward);
         Shader.SetGlobalFloat("_NormalBias", m_NormalBias);
     }
 
@@ -86,8 +86,9 @@ public class UniqueShadowManager : MonoBehaviour
             m_ShadowCamera.orthographic = true;
             m_ShadowCamera.clearFlags = CameraClearFlags.SolidColor;
             m_ShadowCamera.SetReplacementShader(m_caterShader, "RenderType");
+            m_ShadowCamera.gameObject.hideFlags = HideFlags.HideInHierarchy;
         }
-
+       
         if (m_ObjBounds == null || m_Light == null)
         {
             return;
@@ -152,6 +153,8 @@ public class UniqueShadowManager : MonoBehaviour
         _ShadowFarID = Shader.PropertyToID("_SplitFar");
         _StrengthFarID = Shader.PropertyToID("_UniqueShadowStrength");
         _SoftID = Shader.PropertyToID("_SoftShadow");
+        _ShadowMapSizeID =Shader.PropertyToID("_UniqueShadowMapSize");
+        _LightdirID =Shader.PropertyToID("_CustomLightDir");
     }
 
     /// <summary>
@@ -166,19 +169,16 @@ public class UniqueShadowManager : MonoBehaviour
             {
                 m_Renders.AddRange(c);
             }
-
             var r = gameObject.GetComponent<Renderer>();
             if (r != null)
             {
                 m_Renders.Add(r);
             }
         }
-
         if (m_Renders.Count <= 0)
         {
             return;
         }
-
         m_ObjBounds = new Bounds(transform.position, Vector3.zero);
         foreach (var r in m_Renders)
         {
