@@ -26,8 +26,11 @@
    float _SplitFar;
 
    
-
-
+    //shadowcaster
+    #ifdef _UniqueShadowCaster
+    float3 _CustomLightDir;
+                float _NorBias;
+    #endif
 
 
 
@@ -84,5 +87,25 @@
    #define UNITY_SHADOW_COORDS(i)                                   half4 uniqueShadowPos : TEXCOORD##i ;
    #define UNIQUE_SHADOW_TRANSFER(v)			                       o.uniqueShadowPos =UniqueShadowUVW(v.vertex);
    #define UNITY_SHADOW_ATTENUATION(i)                              SampleUniqueShadow(i.uniqueShadowPos);
+   
+   
+   
+         #ifdef _UniqueShadowCaster
+       float4 UniqueShaodwNormalBias(float4 vertex,float3 normal)
+    {
+            float3 WorldN=mul((float3x3)unity_ObjectToWorld,normal);
+                float Acos=dot(WorldN,WorldN);
+                float Asin=sqrt(1-Acos*Acos);
+                float bias=_NorBias*Asin;
+                float4 worldPos=mul(unity_ObjectToWorld,vertex);
+                worldPos.xyz-=WorldN*bias;
+				return  mul(UNITY_MATRIX_VP,worldPos);
+    }
+
+   #define  UNIQUE_SHADOW_NORBIAS(o)                               o.pos= UniqueShaodwNormalBias(v.vertex, v.normal)
+   #endif
+   
+   
+
 #endif
 

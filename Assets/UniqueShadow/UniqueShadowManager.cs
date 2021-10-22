@@ -3,25 +3,30 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
+
 [ExecuteInEditMode]
 public class UniqueShadowManager : MonoBehaviour
 {
+  
     public Camera m_Camera;
     public Light m_Light;
     public Camera m_ShadowCamera;
     public Bounds m_ObjBounds;
-    [Range(0,1f)] public float m_Strength;
-    public float m_SoftShadow=0.001f;
+    [Range(0, 1f)] public float m_Strength;
+    public float m_SoftShadow = 0.001f;
     [Range(0, 0.1f)] public float m_Bias2AABB;
     [Range(0, 0.1f)] public float m_Bias2View;
-    [Range(0, 1f)] public float m_NormalBias=0.4f;
+    [Range(0, 1f)] public float m_NormalBias = 0.4f;
     public float m_ShadowDistance;
     public float m_zOffset = 0.1f;
     private List<Renderer> m_Renders = new List<Renderer>();
     private ObjectAABB m_ObjectAABB;
+
     private ObjectAABB m_ViewAABB;
+
     //rts
     public RenderTexture m_ShadowRT;
+
     //private
     private Matrix4x4[] m_shadowVP = new Matrix4x4[2];
     private int _ShadowMapID;
@@ -30,6 +35,10 @@ public class UniqueShadowManager : MonoBehaviour
     private int _ShadowNearID;
     private int _StrengthFarID;
     private int _SoftID;
+
+
+    private const string m_CastShaderName = "Hidden/_UniqueShadowCaster";
+    public Shader m_caterShader;
     private void OnEnable()
     {
         m_Camera = Camera.main;
@@ -40,10 +49,11 @@ public class UniqueShadowManager : MonoBehaviour
         m_ShadowRT.wrapMode = TextureWrapMode.Clamp;
         m_ObjectAABB = new ObjectAABB();
         m_ViewAABB = new ObjectAABB();
+        m_caterShader = Shader.Find(m_CastShaderName);
         InitShaderProperties();
     }
-    
-    
+
+
     private void Update()
     {
         UpdateBounds();
@@ -54,18 +64,19 @@ public class UniqueShadowManager : MonoBehaviour
             foreach (var r in m_Renders)
             {
                 r.sharedMaterial.SetTexture(_ShadowMapID, m_ShadowRT);
-                r.sharedMaterial.SetVector("unity_LightShadowBias",new Vector4(0,0,0,m_NormalBias));
             }
         }
+        //float clip = m_ViewAABB.m_Size.x > m_ViewAABB.m_Size.y ? m_ViewAABB.m_Size.x : m_ViewAABB.m_Size.y;
         Shader.SetGlobalMatrixArray(_ShadowMatrixsID, m_shadowVP);
-        float clip = m_ViewAABB.m_Size.x > m_ViewAABB.m_Size.y ? m_ViewAABB.m_Size.x : m_ViewAABB.m_Size.y;
-       // clip = clip > m_ViewAABB.m_Size.z ? clip : m_ViewAABB.m_Size.z;
         Shader.SetGlobalFloat(_ShadowFarID, m_ShadowDistance);
         Shader.SetGlobalMatrix("_W2CameraPos", m_Camera.worldToCameraMatrix);
         Shader.SetGlobalFloat(_StrengthFarID, m_Strength);
         Shader.SetGlobalFloat(_SoftID, m_SoftShadow);
-        Shader.SetGlobalVector("_UniqueShadowSize", new Vector2(1024,1024));
+        Shader.SetGlobalVector("_UniqueShadowSize", new Vector2(1024, 1024));
+        Shader.SetGlobalVector("_UniqueLightDir", m_ShadowCamera.transform.forward);
+        Shader.SetGlobalFloat("_NormalBias", m_NormalBias);
     }
+
     void RenderShadow()
     {
         if (m_ShadowCamera == null)
@@ -74,11 +85,14 @@ public class UniqueShadowManager : MonoBehaviour
             m_ShadowCamera.depth = -1000;
             m_ShadowCamera.orthographic = true;
             m_ShadowCamera.clearFlags = CameraClearFlags.SolidColor;
+            m_ShadowCamera.SetReplacementShader(m_caterShader, "RenderType");
         }
+
         if (m_ObjBounds == null || m_Light == null)
         {
             return;
         }
+
         m_ObjectAABB.UpdateAABB(m_ObjBounds);
         m_ObjectAABB.TransformLightSpace(m_Light);
         m_ShadowCamera.targetTexture = m_ShadowRT;
@@ -88,18 +102,19 @@ public class UniqueShadowManager : MonoBehaviour
         //unique
         RenderUnique();
         var proj = m_ShadowCamera.projectionMatrix;
-        proj.m22 +=m_Bias2AABB;
+        proj.m22 += m_Bias2AABB;
         var vp0 = GL.GetGPUProjectionMatrix(proj, false) *
                   m_ShadowCamera.worldToCameraMatrix;
         m_shadowVP[0] = vp0;
         //csm
         RenderCSM();
         proj = m_ShadowCamera.projectionMatrix;
-        proj.m22 +=m_Bias2View;
+        proj.m22 += m_Bias2View;
         var vp1 = GL.GetGPUProjectionMatrix(proj, false) *
                   m_ShadowCamera.worldToCameraMatrix;
         m_shadowVP[1] = vp1;
     }
+
     //rt0
     void RenderUnique()
     {
@@ -110,9 +125,10 @@ public class UniqueShadowManager : MonoBehaviour
         m_ShadowCamera.rect = new Rect(0f, 0, 0.5f, 1);
         //offset
         m_ShadowCamera.transform.position -= m_ShadowCamera.transform.forward * m_zOffset;
-        m_ShadowCamera.farClipPlane = m_ObjectAABB.m_Max.z - m_ObjectAABB.m_Min.z -m_zOffset;
+        m_ShadowCamera.farClipPlane = m_ObjectAABB.m_Max.z - m_ObjectAABB.m_Min.z - m_zOffset;
         m_ShadowCamera.Render();
     }
+
     //rt1
     void RenderCSM()
     {
@@ -124,19 +140,20 @@ public class UniqueShadowManager : MonoBehaviour
         m_ShadowCamera.rect = new Rect(0.5f, 0, 1, 1);
         //offset
         m_ShadowCamera.transform.position -= m_ShadowCamera.transform.forward * m_zOffset;
-        m_ShadowCamera.farClipPlane = m_ViewAABB.m_Max.z - m_ViewAABB.m_Min.z +m_zOffset;
+        m_ShadowCamera.farClipPlane = m_ViewAABB.m_Max.z - m_ViewAABB.m_Min.z + m_zOffset;
         m_ShadowCamera.Render();
     }
-    
-    
+
+
     void InitShaderProperties()
     {
         _ShadowMapID = Shader.PropertyToID("_UniqueShadowTexture");
         _ShadowMatrixsID = Shader.PropertyToID("_UniqueShadowMatrix");
         _ShadowFarID = Shader.PropertyToID("_SplitFar");
-        _StrengthFarID =Shader.PropertyToID("_UniqueShadowStrength"); 
-        _SoftID=Shader.PropertyToID("_SoftShadow"); 
+        _StrengthFarID = Shader.PropertyToID("_UniqueShadowStrength");
+        _SoftID = Shader.PropertyToID("_SoftShadow");
     }
+
     /// <summary>
     /// 获取所有的render组件
     /// </summary>
@@ -149,6 +166,7 @@ public class UniqueShadowManager : MonoBehaviour
             {
                 m_Renders.AddRange(c);
             }
+
             var r = gameObject.GetComponent<Renderer>();
             if (r != null)
             {
@@ -160,16 +178,17 @@ public class UniqueShadowManager : MonoBehaviour
         {
             return;
         }
+
         m_ObjBounds = new Bounds(transform.position, Vector3.zero);
         foreach (var r in m_Renders)
         {
             m_ObjBounds.Encapsulate(r.bounds);
         }
     }
-    
-    
-    
+
+
     #region Gizmos for Debug
+
     void OnDrawGizmos()
     {
         /// Gizmos.DrawWireSphere(m_ObjBounds.center,m_ObjBounds.extents.sqrMagnitude);
@@ -182,6 +201,7 @@ public class UniqueShadowManager : MonoBehaviour
 //        m_ViewAABB.TransformLightSpace(m_Light);
 //        Gizmos.DrawSphere(m_ShadowCamera.transform.TransformPoint(m_ViewAABB.m_Min),0.1f);
     }
+
     void DrawCamera()
     {
         ShadowUtilties.GetViewFrustum(m_Camera, m_ShadowDistance, ref m_ViewAABB.m_Corners);
@@ -230,6 +250,7 @@ public class UniqueShadowManager : MonoBehaviour
         Gizmos.DrawLine(points[2], points[6]);
         Gizmos.DrawLine(points[3], points[7]);
     }
+
     void DrawObjecAABB()
     {
         // Vector3[] points = m_ObjectAABB;
@@ -257,6 +278,7 @@ public class UniqueShadowManager : MonoBehaviour
             var pp = m_Light.transform.TransformPoint(points[i]);
             ShadowUtilties.SetCorners(i, pp.x, pp.y, pp.z, ref points);
         }
+
         Gizmos.color = Color.green;
         Gizmos.DrawSphere(m_ObjectAABB.m_Center, 0.05f);
         Gizmos.DrawLine(points[0], points[1]);
@@ -274,5 +296,6 @@ public class UniqueShadowManager : MonoBehaviour
         Gizmos.DrawLine(points[2], points[6]);
         Gizmos.DrawLine(points[3], points[7]);
     }
+
     #endregion
 }
