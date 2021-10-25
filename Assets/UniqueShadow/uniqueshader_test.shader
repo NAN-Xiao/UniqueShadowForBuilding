@@ -23,13 +23,14 @@
             {
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
+                float4 normal:NORMAL;
             };
 
             struct v2f
             {
                 float2 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
-                UNITY_SHADOW_COORDS(2)
+                UNIQUE_SHADOW_COORDS(2)
                 float4 posWorld : TEXCOORD3;
 
             };
@@ -50,11 +51,32 @@
             {
                 // sample the texture
                 fixed4 col = tex2D(_MainTex, i.uv);
-                col.rgb*=UNITY_SHADOW_ATTENUATION(i);
+                col.rgb*=UNIQUE_SHADOW_ATTENUATION(i);
                 return col;
             }
             ENDCG
         }
-        
+        Pass {
+            Name "ShadowCaster"
+            Tags { "LightMode" = "ShadowCaster" }
+
+            ZWrite On ZTest LEqual
+
+            CGPROGRAM
+            #pragma target 3.5
+
+            #pragma shader_feature_local _ _ALPHATEST_ON _ALPHABLEND_ON _ALPHAPREMULTIPLY_ON
+            #pragma shader_feature_local _METALLICGLOSSMAP
+            #pragma shader_feature_local _PARALLAXMAP
+            #pragma multi_compile_shadowcaster
+            #pragma multi_compile_instancing
+
+            #pragma vertex vertShadowCaster
+            #pragma fragment fragShadowCaster
+
+            #include "UnityStandardShadow.cginc"
+
+            ENDCG
+        }
     }
 }

@@ -10,19 +10,19 @@ public class UniqueShadowManager : MonoBehaviour
     public Camera m_Camera;
     public Light m_Light;
 
+
+    public ShadowQuality m_Quality;
+    
     public Camera m_ShadowCamera;
     public Bounds m_ObjBounds;
     [Range(0, 1f)] public float m_Strength;
     public float m_SoftShadow = 0.001f;
-    [Range(0, 0.1f)] public float m_Bias2AABB;
-    [Range(0, 0.1f)] public float m_Bias2View;
-    [Range(0, 1f)] public float m_NormalBias = 0.4f;
+    [Range(0,2f)] public float m_Bias2AABB;
+    [Range(0,2f)] public float m_Bias2View;
+    public bool m_CaterNormalBias=false;
+    [Range(0, 3f)] public float m_NormalBias = 0.4f;
     public float m_ShadowDistance;
     public float m_zOffset = 0.1f;
-    private List<Renderer> m_Renders = new List<Renderer>();
-    private ObjectAABB m_ObjectAABB;
-
-    private ObjectAABB m_ViewAABB;
 
     //rts
     public RenderTexture m_ShadowRT;
@@ -39,7 +39,15 @@ public class UniqueShadowManager : MonoBehaviour
     private int _LightdirID;
 
     private const string m_CastShaderName = "Hidden/_UniqueShadowCaster";
-    public Shader m_caterShader;
+    private Shader m_caterShader;
+
+    private Vector4 m_biasData = Vector4.zero;
+    private List<Renderer> m_Renders = new List<Renderer>();
+    private ObjectAABB m_ObjectAABB;
+    private ObjectAABB m_ViewAABB;
+    
+    
+        
 
     private void OnEnable()
     {
@@ -56,9 +64,12 @@ public class UniqueShadowManager : MonoBehaviour
             fmt = RenderTextureFormat.Depth;
             Shader.DisableKeyword("SUPPORT_SHADOWMAP");
         }
-        Shader.EnableKeyword("SUPPORT_SHADOWMAP");
+        //test
+//        fmt = RenderTextureFormat.Depth;
+//        Shader.DisableKeyword("SUPPORT_SHADOWMAP");
+        //
         m_ShadowRT = RenderTexture.GetTemporary(2048, 1024,16,fmt);
-        m_ShadowRT.name = "_uniqueShadowMap";
+        m_ShadowRT.name = "_UuniqueShadowMap";
         m_ShadowRT.filterMode = FilterMode.Bilinear;
         m_ShadowRT.wrapMode = TextureWrapMode.Clamp;
         m_ObjectAABB = new ObjectAABB();
@@ -85,9 +96,21 @@ public class UniqueShadowManager : MonoBehaviour
         Shader.SetGlobalFloat(_ShadowFarID, m_ShadowDistance);
         Shader.SetGlobalFloat(_StrengthFarID, m_Strength);
         Shader.SetGlobalFloat(_SoftID, m_SoftShadow);
-        Shader.SetGlobalVector(_ShadowMapSizeID, new Vector2(1024, 1024));
+        Shader.SetGlobalVector(_ShadowMapSizeID, new Vector4(1f/1024f, 1f/1024f,1024f,1024f));
         Shader.SetGlobalVector(_LightdirID, m_ShadowCamera.transform.forward);
-        Shader.SetGlobalFloat("_NormalBias", m_NormalBias);
+        //bias
+        m_biasData.x = m_Bias2View/512f;
+        m_biasData.y = m_NormalBias/512f;
+        if (m_CaterNormalBias)
+        {
+            Shader.SetGlobalFloat("_NormalBias", m_NormalBias); 
+        }
+        else
+        {
+            Shader.SetGlobalFloat("_NormalBias", 0); 
+            
+        }
+        Shader.SetGlobalVector("_BiasData", m_biasData);
     }
 
     void RenderShadow()
@@ -101,7 +124,9 @@ public class UniqueShadowManager : MonoBehaviour
             m_ShadowCamera.SetReplacementShader(m_caterShader, "RenderType");
             m_ShadowCamera.gameObject.hideFlags = HideFlags.HideInHierarchy;
         }
-
+#if UNITY_EDITOR
+        m_ShadowCamera.SetReplacementShader(m_caterShader, "RenderType");
+#endif
         if (m_ObjBounds == null || m_Light == null)
         {
             return;
@@ -122,7 +147,7 @@ public class UniqueShadowManager : MonoBehaviour
         m_shadowVP[0] = vp0;
         //csm
         RenderCSM();
-        proj = m_ShadowCamera.projectionMatrix;
+        proj = m_ShadowCamera.projectionMatrix; 
         proj.m22 += m_Bias2View;
         var vp1 = GL.GetGPUProjectionMatrix(proj, false) *
                   m_ShadowCamera.worldToCameraMatrix;
@@ -207,14 +232,9 @@ public class UniqueShadowManager : MonoBehaviour
 
     void OnDrawGizmos()
     {
-        /// Gizmos.DrawWireSphere(m_ObjBounds.center,m_ObjBounds.extents.sqrMagnitude);
-
         DrawObjecAABB();
         DrawCamera();
         Gizmos.color = Color.red;
-//        ShadowUtilties.GetViewFrustum(m_Camera, m_ShadowDistance, ref m_ViewAABB.m_Corners);
-//        m_ViewAABB.TransformLightSpace(m_Light);
-//        Gizmos.DrawSphere(m_ShadowCamera.transform.TransformPoint(m_ViewAABB.m_Min),0.1f);
     }
 
     void DrawCamera()

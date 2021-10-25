@@ -2,7 +2,7 @@
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
+       // _MainTex ("Texture", 2D) = "white" {}
     }
     SubShader
     {
@@ -11,12 +11,11 @@
 
         Pass
         {
+            cull off
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // make fog work
             #pragma multi_compile_fog
-
             #include "UnityCG.cginc"
           
             struct appdata
@@ -32,8 +31,8 @@
                 float4 vertex : SV_POSITION;
             };
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
+            //sampler2D _MainTex;
+           // float4 _MainTex_ST;
             uniform float3 _UniqueLightDir;
             uniform float _NormalBias;
             v2f vert (appdata v)
