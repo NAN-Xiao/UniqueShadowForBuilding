@@ -45,9 +45,10 @@
    }
    
    static float2 GetGroupTapUV(float2 groupCenterCoord,float2 weightsX,float2 weightsY){
-      float offsetX = weightsX.y / (weightsX.x + weightsX.y)*2.0f;
+      float offsetX = weightsX.y / (weightsX.x+ weightsX.y)*2;
       float offsetY = weightsY.y / (weightsY.x + weightsY.y);
-      float2 coord = groupCenterCoord  -0.5+ float2(offsetX,offsetY);
+      float2 coord = groupCenterCoord-0.5 + float2(offsetX,offsetY);
+      //_UniqueShadowMapSize.xy=1/size
       return coord * _UniqueShadowMapSize.xy;
    }
 
@@ -177,7 +178,7 @@
          //shadow*=float3(1,0,0)*coord;
       #else
          shadow=SampleShadowPCF3x3_NoSupportShadow(coord);
-         shadow*=float3(0,1,0);
+         //shadow*=float3(0,1,0);
       #endif
       return  lerp(1,shadow,_UniqueShadowStrength);
    }
