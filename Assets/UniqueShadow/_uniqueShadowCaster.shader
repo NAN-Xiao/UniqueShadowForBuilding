@@ -2,7 +2,7 @@
 {
     Properties
     {
-       // _MainTex ("Texture", 2D) = "white" {}
+        // _MainTex ("Texture", 2D) = "white" {}
     }
     SubShader
     {
@@ -17,7 +17,7 @@
             #pragma fragment frag
             #pragma multi_compile_fog
             #include "UnityCG.cginc"
-          
+            
             struct appdata
             {
                 float4 vertex : POSITION;
@@ -32,21 +32,21 @@
             };
 
             //sampler2D _MainTex;
-           // float4 _MainTex_ST;
-            uniform float3 _UniqueLightDir;
+            // float4 _MainTex_ST;
+            //uniform float3 _UniqueLightDir;
             uniform float _NormalBias;
             v2f vert (appdata v)
             {
                 v2f o;
-               	float3 WorldN=mul((float3x3)unity_ObjectToWorld,v.normal);
-                float Acos=dot(WorldN,_UniqueLightDir);
+                float3 WorldN=mul((float3x3)unity_ObjectToWorld,v.normal);
+                float Acos=dot(WorldN,_WorldSpaceLightPos0);
                 float Asin=sqrt(1-Acos*Acos);
                 float bias=_NormalBias*Asin;
                 float4 worldPos=mul(unity_ObjectToWorld,v.vertex);
-                 worldPos.xyz-=WorldN*bias;
+                worldPos.xyz-=WorldN*bias;
                 o.vertex=mul(UNITY_MATRIX_VP,worldPos);
                 o.uv=v.uv;
-				return  o;
+                return  o;
             }
 
             fixed4 frag (v2f i) : SV_Target

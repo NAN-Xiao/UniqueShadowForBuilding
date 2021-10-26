@@ -96,14 +96,16 @@ public class UniqueShadowManager : MonoBehaviour
         Shader.SetGlobalFloat(_ShadowFarID, m_ShadowDistance);
         Shader.SetGlobalFloat(_StrengthFarID, m_Strength);
         Shader.SetGlobalFloat(_SoftID, m_SoftShadow);
-        Shader.SetGlobalVector(_ShadowMapSizeID, new Vector4(1f/1024f, 1f/1024f,1024f,1024f));
+        //传二分之1图集的画 tentfilter会损失精度
+        Shader.SetGlobalVector(_ShadowMapSizeID, new Vector4(1f/2048, 1f/1024f,2048f,1024f));
         Shader.SetGlobalVector(_LightdirID, m_ShadowCamera.transform.forward);
         //bias
-        m_biasData.x = m_Bias2View/512f;
-        m_biasData.y = m_NormalBias/512f;
+        float scale = 1 / m_shadowVP[1].m00;
+        m_biasData.x = m_Bias2View/(512f*scale);
+        m_biasData.y = m_NormalBias/(512f*scale);
         if (m_CaterNormalBias)
         {
-            Shader.SetGlobalFloat("_NormalBias", m_NormalBias); 
+            Shader.SetGlobalFloat("_NormalBias",  m_biasData.y); 
         }
         else
         {
