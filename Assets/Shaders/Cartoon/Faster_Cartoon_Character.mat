@@ -1,0 +1,88 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Faster_Cartoon_Character
+  m_Shader: {fileID: 4800000, guid: 65fca0027dcac9f46a6c47d312465cca, type: 3}
+  m_ShaderKeywords: _CUSTOMOUTLINENORMAL_OFF _LOD_PRO _USEDGRADIENT_ON _USEINSIDEOUTLINEOFFSET_OFF
+    _USERIM_OFF
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _Cubemap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DarkTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _IlluminationTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _LineTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _RimTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Floats:
+    - _CustomOutlineNormal: 0
+    - _DarkColorOffset: 0.5
+    - _DarkColorStrength: 1.5
+    - _FresnelDarkOpacity: 0.3
+    - _FresnelDarkScale: 1.5
+    - _FresnelIntensity: 1
+    - _FresnelOpacity: 0.3
+    - _FresnelScale: 1.5
+    - _FresnelSmooth: 0
+    - _FresnelThief: 1
+    - _FresnelThreshold: 1
+    - _Glossiness: 8
+    - _InLineWidth: 0.001
+    - _InsideOutlineOffset: 0
+    - _LOD: 0
+    - _MaxVColorR: 1
+    - _OutLineWidth: 0
+    - _OutlineBaseThickness: 0.004
+    - _ProbeFactor: 1
+    - _RimAlpha: 0
+    - _RimIntensity: 1
+    - _RimScale: 1
+    - _RimThresThief: 1
+    - _RimThreshold: 1
+    - _ShadowThief: 1
+    - _ShadowThreshold: 1
+    - _Specular: 3
+    - _SpeculerIntensity: 1
+    - _SpeculerThreshold: 1
+    - _UseInsideOutlineOffset: 0
+    - _UsedGradient: 1
+    - _useRim: 0
+    m_Colors:
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _ColorDown: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+    - _ColorUp: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+    - _FresnelColor: {r: 1, g: 1, b: 1, a: 1}
+    - _LightDir: {r: 0.3333, g: 0.3333, b: -0.3333, a: 1}
+    - _OutLineColor: {r: 0, g: 0, b: 0, a: 0}
+    - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _RimColor: {r: 1, g: 0.8, b: 0, a: 0}

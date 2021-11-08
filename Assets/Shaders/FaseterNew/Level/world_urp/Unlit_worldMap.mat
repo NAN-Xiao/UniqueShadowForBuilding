@@ -1,0 +1,88 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Unlit_worldMap
+  m_Shader: {fileID: 4800000, guid: d5f924c1fbcd0a64fb0f62ac2a6fd798, type: 3}
+  m_ShaderKeywords: Simplify
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _Control:
+        m_Texture: {fileID: 2800000, guid: 0090f272dbdfdf44e80806b8b6551faf, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 2800000, guid: f17cf20e845a425499bae4950dfd0ba1, type: 3}
+        m_Scale: {x: 5, y: 5}
+        m_Offset: {x: 0, y: 0}
+    - _Splat0:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Splat1:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Splat2:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Splat3:
+        m_Texture: {fileID: -1278511875801067435, guid: c7c1703078bfd894d8ed0aed488b1894,
+          type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _mixer:
+        m_Texture: {fileID: -4567718168417356548, guid: 5d6abd2f4bf38a34cb6db6ce07109b7d,
+          type: 2}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _noiseTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _texture0:
+        m_Texture: {fileID: 2800000, guid: 2933ddbd0a5b1af46b8f028328355da4, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _texture1:
+        m_Texture: {fileID: 2800000, guid: f17cf20e845a425499bae4950dfd0ba1, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _texture2:
+        m_Texture: {fileID: 2800000, guid: f24b2cd47ecbb6e4899a812d1388c2ec, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _texture3:
+        m_Texture: {fileID: 2800000, guid: 271b8ae079f9527429bee08ef7ed72e1, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Floats:
+    - Simplify: 1
+    - _BlendRatio: 1
+    - _DstBlend: 0
+    - _Ref: 4
+    - _SrcBlend: 1
+    - _ZWrite: 1
+    - _useTex: 0
+    - com: 5
+    - stencilOperation: 1
+    m_Colors:
+    - _Color: {r: 0.34100214, g: 0.9150943, b: 0.47143027, a: 1}
+    - _Color0: {r: 0.6226415, g: 0.15566038, b: 0.15566038, a: 1}
+    - _Color1: {r: 0.550544, g: 0.8867924, b: 0.24679601, a: 1}
+    - _Color2: {r: 0.18262726, g: 0.43069285, b: 0.6792453, a: 1}
+    - _Color3: {r: 0.8113208, g: 0.12629052, b: 0.80582494, a: 1}
+    - _Tint: {r: 1, g: 1, b: 1, a: 1}

@@ -9,7 +9,7 @@
 		_LUT("LUT", 2D) = "white" {}
 	}
 
-		SubShader
+	SubShader
 	{
 		Tags { "RenderType" = "Opaque" }
 		LOD 100
@@ -26,10 +26,10 @@
 
 			#pragma vertex vert
 			#pragma fragment frag
-  
-            #pragma multi_compile _ SUPPORT_SHADOWMAP 
+			
+			#pragma multi_compile _ SUPPORT_SHADOWMAP 
 			#include "UnityStandardBRDF.cginc" 
-            #include "UniqueShaodw.cginc"
+			#include "UniqueShaodw.cginc"
 			struct appdata
 			{
 				float4 vertex : POSITION;
@@ -138,33 +138,33 @@
 				float3 IndirectResult = iblDiffuseResult + iblSpecularResult;
 
 				float4 result = float4(DirectLightResult + IndirectResult, 1);
-            result.rgb*=UNIQUE_SHADOW_ATTENUATION(i);
+				result.rgb*=UNIQUE_SHADOW_ATTENUATION(i);
 				return result;
 			}
 
 			ENDCG
 		}
-		 Pass {
-            Name "ShadowCaster"
-            Tags { "LightMode" = "ShadowCaster" }
-        cull off
-            ZWrite On ZTest LEqual
+		Pass {
+			Name "ShadowCaster"
+			Tags { "LightMode" = "ShadowCaster" }
+			cull off
+			ZWrite On ZTest LEqual
 
-            CGPROGRAM
-            #pragma target 3.5
+			CGPROGRAM
+			#pragma target 3.5
 
-            #pragma shader_feature_local _ _ALPHATEST_ON _ALPHABLEND_ON _ALPHAPREMULTIPLY_ON
-            #pragma shader_feature_local _METALLICGLOSSMAP
-            #pragma shader_feature_local _PARALLAXMAP
-            #pragma multi_compile_shadowcaster
-            #pragma multi_compile_instancing
+			#pragma shader_feature_local _ _ALPHATEST_ON _ALPHABLEND_ON _ALPHAPREMULTIPLY_ON
+			#pragma shader_feature_local _METALLICGLOSSMAP
+			#pragma shader_feature_local _PARALLAXMAP
+			#pragma multi_compile_shadowcaster
+			#pragma multi_compile_instancing
 
-            #pragma vertex vertShadowCaster
-            #pragma fragment fragShadowCaster
+			#pragma vertex vertShadowCaster
+			#pragma fragment fragShadowCaster
 
-            #include "UnityStandardShadow.cginc"
+			#include "UnityStandardShadow.cginc"
 
-            ENDCG
-        }
+			ENDCG
+		}
 	}
 }

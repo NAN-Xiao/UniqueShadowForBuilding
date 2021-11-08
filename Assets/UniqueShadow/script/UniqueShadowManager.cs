@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
-
 [ExecuteInEditMode]
 public class UniqueShadowManager : MonoBehaviour
 {
@@ -12,21 +11,30 @@ public class UniqueShadowManager : MonoBehaviour
 
 
     public ShadowQuality m_Quality;
-    
+
     public Camera m_ShadowCamera;
     public Bounds m_ObjBounds;
+    public float m_ShadowDistance;
+    public int m_ShadowMaptHeight = 512;
+
+    public int m_ShadowMaptWeight
+    {
+        get { return m_ShadowMaptHeight * 2; }
+    }
+
     [Range(0, 1f)] public float m_Strength;
     public float m_SoftShadow = 0.001f;
-    [Range(0,2f)] public float m_Bias2AABB;
-    [Range(0,2f)] public float m_Bias2View;
-    public bool m_CaterNormalBias=false;
+    [Range(0, 2f)] public float m_Bias2AABB;
+    [Range(0, 2f)] public float m_Bias2View;
+    public bool m_CaterNormalBias = false;
     [Range(0, 3f)] public float m_NormalBias = 0.4f;
-    public float m_ShadowDistance;
+   
     public float m_zOffset = 0.1f;
 
     //rts
     public RenderTexture m_ShadowRT;
 
+    public RenderTexture m_WorldposRT;
     //private
     private Matrix4x4[] m_shadowVP = new Matrix4x4[2];
     private int _ShadowMapID;
@@ -45,18 +53,19 @@ public class UniqueShadowManager : MonoBehaviour
     private List<Renderer> m_Renders = new List<Renderer>();
     private ObjectAABB m_ObjectAABB;
     private ObjectAABB m_ViewAABB;
-    
-    
-        
+
+
+
 
     private void OnEnable()
     {
         m_Camera = Camera.main;
         RenderTextureFormat fmt;
+
         //SUPPORT_SHADOWMAP??shadowmap:depthmap
         if (SystemInfo.supportsShadows)
         {
-            fmt= RenderTextureFormat.Shadowmap;
+            fmt = RenderTextureFormat.Shadowmap;
             Shader.EnableKeyword("SUPPORT_SHADOWMAP");
         }
         else
@@ -64,11 +73,13 @@ public class UniqueShadowManager : MonoBehaviour
             fmt = RenderTextureFormat.Depth;
             Shader.DisableKeyword("SUPPORT_SHADOWMAP");
         }
-        //test
-//        fmt = RenderTextureFormat.Depth;
-//        Shader.DisableKeyword("SUPPORT_SHADOWMAP");
-        //
-        m_ShadowRT = RenderTexture.GetTemporary(2048, 1024,16,fmt);
+        Shader.EnableKeyword("UNIQUESHADOW");
+        // test
+        //        fmt = RenderTextureFormat.Depth;
+        //        Shader.DisableKeyword("SUPPORT_SHADOWMAP");
+
+        m_ShadowRT = RenderTexture.GetTemporary(m_ShadowMaptWeight, m_ShadowMaptHeight, 16, fmt);
+        m_WorldposRT = RenderTexture.GetTemporary(Screen.width, Screen.height);
         m_ShadowRT.name = "_UuniqueShadowMap";
         m_ShadowRT.filterMode = FilterMode.Bilinear;
         m_ShadowRT.wrapMode = TextureWrapMode.Clamp;
@@ -78,10 +89,14 @@ public class UniqueShadowManager : MonoBehaviour
         InitShaderProperties();
     }
 
+    private void OnDisable()
+    {
+      Shader.DisableKeyword("UNIQUESHADOW");
+    }
 
     private void Update()
     {
-     
+
         UpdateBounds();
         RenderShadow();
         //set shader
@@ -97,20 +112,20 @@ public class UniqueShadowManager : MonoBehaviour
         Shader.SetGlobalFloat(_StrengthFarID, m_Strength);
         Shader.SetGlobalFloat(_SoftID, m_SoftShadow);
         //传二分之1图集的画 tentfilter会损失精度
-        Shader.SetGlobalVector(_ShadowMapSizeID, new Vector4(1f/2048, 1f/1024f,2048f,1024f));
+        Shader.SetGlobalVector(_ShadowMapSizeID, new Vector4(1f / m_ShadowMaptWeight, 1f / m_ShadowMaptHeight, m_ShadowMaptWeight, m_ShadowMaptHeight));
         Shader.SetGlobalVector(_LightdirID, m_ShadowCamera.transform.forward);
         //bias
         float scale = 1 / m_shadowVP[1].m00;
-        m_biasData.x = m_Bias2View/(512f*scale);
-        m_biasData.y = m_NormalBias/(512f*scale);
+        m_biasData.x = m_Bias2View / (2049 * scale);
+        m_biasData.y = m_NormalBias / (4096 * scale);
         if (m_CaterNormalBias)
         {
-            Shader.SetGlobalFloat("_NormalBias",  m_biasData.y); 
+            Shader.SetGlobalFloat("_NormalBias", m_biasData.y);
         }
         else
         {
-            Shader.SetGlobalFloat("_NormalBias", 0); 
-            
+            Shader.SetGlobalFloat("_NormalBias", 0);
+
         }
         Shader.SetGlobalVector("_BiasData", m_biasData);
     }
@@ -149,7 +164,7 @@ public class UniqueShadowManager : MonoBehaviour
         m_shadowVP[0] = vp0;
         //csm
         RenderCSM();
-        proj = m_ShadowCamera.projectionMatrix; 
+        proj = m_ShadowCamera.projectionMatrix;
         proj.m22 += m_Bias2View;
         var vp1 = GL.GetGPUProjectionMatrix(proj, false) *
                   m_ShadowCamera.worldToCameraMatrix;
