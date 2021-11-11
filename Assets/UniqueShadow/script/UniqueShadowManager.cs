@@ -33,8 +33,6 @@ public class UniqueShadowManager : MonoBehaviour
 
     //rts
     public RenderTexture m_ShadowRT;
-
-    public RenderTexture m_WorldposRT;
     //private
     private Matrix4x4[] m_shadowVP = new Matrix4x4[2];
     private int _ShadowMapID;
@@ -79,8 +77,7 @@ public class UniqueShadowManager : MonoBehaviour
         //        Shader.DisableKeyword("SUPPORT_SHADOWMAP");
 
         m_ShadowRT = RenderTexture.GetTemporary(m_ShadowMaptWeight, m_ShadowMaptHeight, 16, fmt);
-        m_WorldposRT = RenderTexture.GetTemporary(Screen.width, Screen.height);
-        m_ShadowRT.name = "_UuniqueShadowMap";
+        m_ShadowRT.name = "_UniqueShadowMap";
         m_ShadowRT.filterMode = FilterMode.Bilinear;
         m_ShadowRT.wrapMode = TextureWrapMode.Clamp;
         m_ObjectAABB = new ObjectAABB();
