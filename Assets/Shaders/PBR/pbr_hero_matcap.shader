@@ -264,6 +264,7 @@ Shader "Faster/PBR/Hero(matcap)"
                 float3 IndirectResult =iblDiffuseResult+iblSpecularResult*Ao;
                 float4 result = float4(DirectLightResult +IndirectResult, 1);
                 result.rgb+=_emission*_EmissionColor;
+                result.rgb=shadow;
                 return result;
             }
 

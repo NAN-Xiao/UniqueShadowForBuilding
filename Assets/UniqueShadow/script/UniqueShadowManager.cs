@@ -52,8 +52,10 @@ public class UniqueShadowManager : MonoBehaviour
     private ObjectAABB m_ObjectAABB;
     private ObjectAABB m_ViewAABB;
 
+    public RenderTexture m_depthTex;
+    public RenderTexture m_collectTex;
 
-
+    public Material mat;
 
     private void OnEnable()
     {
@@ -84,6 +86,11 @@ public class UniqueShadowManager : MonoBehaviour
         m_ViewAABB = new ObjectAABB();
         m_caterShader = Shader.Find(m_CastShaderName);
         InitShaderProperties();
+
+
+        m_depthTex = RenderTexture.GetTemporary(Screen.width, Screen.height, 24, RenderTextureFormat.Depth);
+        m_collectTex = RenderTexture.GetTemporary(Screen.width, Screen.height, 24, RenderTextureFormat.Default);
+
     }
 
     private void OnDisable()
@@ -101,10 +108,10 @@ public class UniqueShadowManager : MonoBehaviour
         {
             foreach (var r in m_Renders)
             {
-                r.sharedMaterial.SetTexture(_ShadowMapID, m_ShadowRT);
+              Shader.SetGlobalTexture(_ShadowMapID, m_ShadowRT);
             }
         }
-        Shader.SetGlobalMatrixArray(_ShadowMatrixsID, m_shadowVP);
+    
         Shader.SetGlobalFloat(_ShadowFarID, m_ShadowDistance);
         Shader.SetGlobalFloat(_StrengthFarID, m_Strength);
         Shader.SetGlobalFloat(_SoftID, m_SoftShadow);
@@ -115,15 +122,8 @@ public class UniqueShadowManager : MonoBehaviour
         float scale = 1 / m_shadowVP[1].m00;
         m_biasData.x = m_Bias2View / (2049 * scale);
         m_biasData.y = m_NormalBias / (4096 * scale);
-        if (m_CaterNormalBias)
-        {
-            Shader.SetGlobalFloat("_NormalBias", m_biasData.y);
-        }
-        else
-        {
-            Shader.SetGlobalFloat("_NormalBias", 0);
+        Shader.SetGlobalMatrixArray(_ShadowMatrixsID, m_shadowVP);
 
-        }
         Shader.SetGlobalVector("_BiasData", m_biasData);
     }
 
@@ -132,15 +132,10 @@ public class UniqueShadowManager : MonoBehaviour
         if (m_ShadowCamera == null)
         {
             m_ShadowCamera = new GameObject("___Light_Camera___").AddComponent<Camera>();
-            m_ShadowCamera.depth = -1000;
-            m_ShadowCamera.orthographic = true;
-            m_ShadowCamera.clearFlags = CameraClearFlags.SolidColor;
-            m_ShadowCamera.SetReplacementShader(m_caterShader, "RenderType");
+            m_ShadowCamera.SetReplacementShader(m_caterShader, "");
+          
             m_ShadowCamera.gameObject.hideFlags = HideFlags.HideInHierarchy;
         }
-#if UNITY_EDITOR
-        m_ShadowCamera.SetReplacementShader(m_caterShader, "RenderType");
-#endif
         if (m_ObjBounds == null || m_Light == null)
         {
             return;
@@ -148,10 +143,7 @@ public class UniqueShadowManager : MonoBehaviour
 
         m_ObjectAABB.UpdateAABB(m_ObjBounds);
         m_ObjectAABB.TransformLightSpace(m_Light);
-        m_ShadowCamera.targetTexture = m_ShadowRT;
-        m_ShadowCamera.transform.forward = m_Light.transform.forward;
-        m_ShadowCamera.nearClipPlane = 0.01f;
-        m_ShadowCamera.backgroundColor = Color.white;
+        Resetlight();
         //unique
         RenderUnique();
         var proj = m_ShadowCamera.projectionMatrix;
@@ -166,8 +158,42 @@ public class UniqueShadowManager : MonoBehaviour
         var vp1 = GL.GetGPUProjectionMatrix(proj, false) *
                   m_ShadowCamera.worldToCameraMatrix;
         m_shadowVP[1] = vp1;
+
+        //depth
+        if (mat!=null)
+        {
+            ResetDepth();
+            m_ShadowCamera.Render();
+            var vp = GL.GetGPUProjectionMatrix(m_ShadowCamera.projectionMatrix, false) *
+                     m_ShadowCamera.worldToCameraMatrix;
+            mat.SetMatrix("_ViewProjInv",vp.inverse);
+            mat.SetTexture("ShadowDepth",m_ShadowRT);
+            mat.SetMatrixArray("_world2shadow",new Matrix4x4[]{vp0,vp1});
+            Shader.SetGlobalFloat("_NormalBias",m_NormalBias);
+            Graphics.Blit(m_depthTex,m_collectTex,mat);
+        }
+        
+        
     }
 
+    public void ResetDepth()
+    {
+        m_ShadowCamera.CopyFrom(m_Camera);
+        m_ShadowCamera.transform.position = m_Camera.transform.position;
+        m_ShadowCamera.transform.rotation = m_Camera.transform.rotation;
+        m_ShadowCamera.targetTexture = m_depthTex;
+    }
+
+    public void Resetlight()
+    {
+        m_ShadowCamera.depth = -1000;
+        m_ShadowCamera.orthographic = true;
+        m_ShadowCamera.clearFlags = CameraClearFlags.SolidColor;
+        m_ShadowCamera.transform.forward = m_Light.transform.forward;
+        m_ShadowCamera.nearClipPlane = 0.01f;
+        m_ShadowCamera.backgroundColor = Color.white;
+        m_ShadowCamera.targetTexture = m_ShadowRT;
+    }
     //rt0
     void RenderUnique()
     {
