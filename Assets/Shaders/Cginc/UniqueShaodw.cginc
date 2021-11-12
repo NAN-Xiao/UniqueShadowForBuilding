@@ -13,10 +13,13 @@
       sampler2D _UniqueShadowTexture;
    #endif
    
+   sampler2D _SrceenShadowTexture;
+      
+      
    float _UniqueShadowFilterWidth;
    float4x4 _UniqueShadowMatrix[2];
 
-   
+
    //float4(1/sizex,1/sizey,sizex,sizey);
    float4 _UniqueShadowMapSize;
    float _SplitFar;
@@ -24,6 +27,7 @@
    float _UniqueShadowStrength;
    float _SoftShadow;
    
+   float3 _uniqueLightDir;
    //one sample
    float SampleShadowMap(float3 coord)
    {
@@ -267,12 +271,12 @@
       float4 coord=sc0*(weidth>_SplitFar)+sc1*(weidth<_SplitFar);
       float shadow=1;
       #if SUPPORT_SHADOWMAP
-         shadow=SampleShadowPCF5x5_9Tap(sc0);
+         shadow=SampleShadowPCF5x5_9Tap(coord);
       #else
-         shadow=SampleShadowPCF3x3_NoSupportShadow(sc0);
+         shadow=SampleShadowPCF3x3_NoSupportShadow(coord);
       #endif
-     return  SampleShadowMap(sc0);//(shadowcoord);
-      //return  lerp(1,shadow,_UniqueShadowStrength);
+        
+      return  lerp(1,shadow,_UniqueShadowStrength);
    }
    
    
@@ -282,6 +286,7 @@
       #define  TRANSFER_SHADOW(o) UNIQUE_SHADOW_TRANSFER(o)	
       #define   UNITY_LIGHT_ATTENUATION(destName, input, worldPos)\
       fixed destName = UNIQUE_SHADOW_ATTENUATION(input)
+       #define SHADOW_COORDS(i) UNIQUE_SHADOW_COORDS(i)
    #endif
 
 
@@ -304,5 +309,26 @@
       }
       #define  UNIQUE_SHADOW_NORBIAS(o)                               o.pos= UniqueShaodwNormalBias(v.vertex, v.normal)
    #endif
+   
+   
+   
+   float4 Invers2WorldPos(float3 uv)
+   {
+        float4 worldPos;
+        worldPos.xy= uv.xy*2-1;
+        worldPos.z=uv.z;
+        worldPos.w=1;
+        return worldPos;
+   }
+   
+   
+   
+   
+   
+   
+   
+   
+   
+   
 #endif
 

@@ -93,16 +93,17 @@ Shader "Faster/PBR/Hero(matcap)"
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 float3 worldPos : TEXCOORD1;
-                UNIQUE_SHADOW_COORDS(2)//仅仅是阴影
+                SHADOW_COORDS(2)//仅仅是阴影
                 #if defined(USENORMAL)|| defined(Anisotropy)
-                    float3 worldNormal : TEXCOORD3;
+                    float3 worldNormal : NORMAL;
                     float3 worldBinormal:TEXCOORD4;
-                    float3 worldTangent:TEXCOORD5;
+                    float3 worldTangent:TANGENT;
                 #else
-                    float3 worldNormal : TEXCOORD3;
+                    float3 worldNormal : NORMAL;
                 #endif
                 float3 sh:TEXCOORD6;
                 float3x3 rotation:TEXCOORD7;
+                float2 uv2 : TEXCOORD3;
             };
 
             float4 _Tint;
@@ -126,6 +127,7 @@ Shader "Faster/PBR/Hero(matcap)"
             {
                 v2f o;
                 o.pos = UnityObjectToClipPos(v.vertex);
+               o.uv2=o.pos.xy/o.pos.w; 
                 o.worldPos = mul(unity_ObjectToWorld, v.vertex);
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
                 float3 worldTangent = UnityObjectToWorldDir(v.tangent.xyz);
@@ -264,7 +266,7 @@ Shader "Faster/PBR/Hero(matcap)"
                 float3 IndirectResult =iblDiffuseResult+iblSpecularResult*Ao;
                 float4 result = float4(DirectLightResult +IndirectResult, 1);
                 result.rgb+=_emission*_EmissionColor;
-                result.rgb=shadow;
+              // result.rgb=tex2D(_UniqueShadowTexture,i.uv2.xy*float2(1,-1)*0.5+0.5).r;
                 return result;
             }
 

@@ -31,9 +31,6 @@
                 float4 vertex : SV_POSITION;
             };
 
-            //sampler2D _MainTex;
-            // float4 _MainTex_ST;
-            //uniform float3 _UniqueLightDir;
             uniform float _NormalBias;
             v2f vert (appdata v)
             {

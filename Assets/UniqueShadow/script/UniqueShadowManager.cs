@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
+
 [ExecuteInEditMode]
 public class UniqueShadowManager : MonoBehaviour
 {
@@ -28,11 +29,15 @@ public class UniqueShadowManager : MonoBehaviour
     [Range(0, 2f)] public float m_Bias2View;
     public bool m_CaterNormalBias = false;
     [Range(0, 3f)] public float m_NormalBias = 0.4f;
-   
+
+    [Range(0, 10f)] public float m_ContentShadowDistance = 0.4f;
+    // [Range(0, 3f)] public float m_NormalBias = 0.4f;
+    public float m_BlurRadius = 0.1f;
     public float m_zOffset = 0.1f;
 
     //rts
     public RenderTexture m_ShadowRT;
+
     //private
     private Matrix4x4[] m_shadowVP = new Matrix4x4[2];
     private int _ShadowMapID;
@@ -55,7 +60,8 @@ public class UniqueShadowManager : MonoBehaviour
     public RenderTexture m_depthTex;
     public RenderTexture m_collectTex;
 
-    public Material mat;
+    public Material collect_mat;
+    public Material blur_mat;
 
     private void OnEnable()
     {
@@ -73,10 +79,11 @@ public class UniqueShadowManager : MonoBehaviour
             fmt = RenderTextureFormat.Depth;
             Shader.DisableKeyword("SUPPORT_SHADOWMAP");
         }
+
         Shader.EnableKeyword("UNIQUESHADOW");
         // test
-        //        fmt = RenderTextureFormat.Depth;
-        //        Shader.DisableKeyword("SUPPORT_SHADOWMAP");
+//        fmt = RenderTextureFormat.Depth;
+//        Shader.DisableKeyword("SUPPORT_SHADOWMAP");
 
         m_ShadowRT = RenderTexture.GetTemporary(m_ShadowMaptWeight, m_ShadowMaptHeight, 16, fmt);
         m_ShadowRT.name = "_UniqueShadowMap";
@@ -89,18 +96,17 @@ public class UniqueShadowManager : MonoBehaviour
 
 
         m_depthTex = RenderTexture.GetTemporary(Screen.width, Screen.height, 24, RenderTextureFormat.Depth);
-        m_collectTex = RenderTexture.GetTemporary(Screen.width, Screen.height, 24, RenderTextureFormat.Default);
-
+        m_collectTex = RenderTexture.GetTemporary(Screen.width, Screen.height, 0, RenderTextureFormat.Default);
     }
 
     private void OnDisable()
     {
-      Shader.DisableKeyword("UNIQUESHADOW");
+        Shader.DisableKeyword("UNIQUESHADOW");
     }
 
     private void Update()
     {
-
+        
         UpdateBounds();
         RenderShadow();
         //set shader
@@ -108,23 +114,26 @@ public class UniqueShadowManager : MonoBehaviour
         {
             foreach (var r in m_Renders)
             {
-              Shader.SetGlobalTexture(_ShadowMapID, m_ShadowRT);
+               r.sharedMaterial.SetTexture(_ShadowMapID, m_ShadowRT);
             }
         }
-    
+        Shader.SetGlobalTexture(_ShadowMapID,m_ShadowRT);
+        Shader.SetGlobalFloat("ContertDis", m_ContentShadowDistance);
         Shader.SetGlobalFloat(_ShadowFarID, m_ShadowDistance);
         Shader.SetGlobalFloat(_StrengthFarID, m_Strength);
         Shader.SetGlobalFloat(_SoftID, m_SoftShadow);
+        
         //传二分之1图集的画 tentfilter会损失精度
-        Shader.SetGlobalVector(_ShadowMapSizeID, new Vector4(1f / m_ShadowMaptWeight, 1f / m_ShadowMaptHeight, m_ShadowMaptWeight, m_ShadowMaptHeight));
+        Shader.SetGlobalVector(_ShadowMapSizeID,
+            new Vector4(1f / m_ShadowMaptWeight, 1f / m_ShadowMaptHeight, m_ShadowMaptWeight, m_ShadowMaptHeight));
         Shader.SetGlobalVector(_LightdirID, m_ShadowCamera.transform.forward);
         //bias
         float scale = 1 / m_shadowVP[1].m00;
         m_biasData.x = m_Bias2View / (2049 * scale);
         m_biasData.y = m_NormalBias / (4096 * scale);
         Shader.SetGlobalMatrixArray(_ShadowMatrixsID, m_shadowVP);
-
         Shader.SetGlobalVector("_BiasData", m_biasData);
+        Shader.SetGlobalVector("_uniqueLightDir", -1f * m_Light.transform.forward * m_biasData.x);
     }
 
     void RenderShadow()
@@ -133,9 +142,9 @@ public class UniqueShadowManager : MonoBehaviour
         {
             m_ShadowCamera = new GameObject("___Light_Camera___").AddComponent<Camera>();
             m_ShadowCamera.SetReplacementShader(m_caterShader, "");
-          
             m_ShadowCamera.gameObject.hideFlags = HideFlags.HideInHierarchy;
         }
+
         if (m_ObjBounds == null || m_Light == null)
         {
             return;
@@ -160,20 +169,20 @@ public class UniqueShadowManager : MonoBehaviour
         m_shadowVP[1] = vp1;
 
         //depth
-        if (mat!=null)
+        if (collect_mat != null)
         {
             ResetDepth();
             m_ShadowCamera.Render();
             var vp = GL.GetGPUProjectionMatrix(m_ShadowCamera.projectionMatrix, false) *
                      m_ShadowCamera.worldToCameraMatrix;
-            mat.SetMatrix("_ViewProjInv",vp.inverse);
-            mat.SetTexture("ShadowDepth",m_ShadowRT);
-            mat.SetMatrixArray("_world2shadow",new Matrix4x4[]{vp0,vp1});
-            Shader.SetGlobalFloat("_NormalBias",m_NormalBias);
-            Graphics.Blit(m_depthTex,m_collectTex,mat);
+            collect_mat.SetMatrix("_ViewProjInv", vp.inverse);
+            collect_mat.SetTexture("ShadowDepth", m_ShadowRT);
+            collect_mat.SetMatrixArray("_world2shadow", new Matrix4x4[] {vp0, vp1});
+            Shader.SetGlobalFloat("_NormalBias", m_NormalBias);
+            Graphics.Blit(m_depthTex, m_collectTex, collect_mat);
+            DrawBlur(m_collectTex);
+            Shader.SetGlobalTexture("_SrceenShadowTexture",m_collectTex);
         }
-        
-        
     }
 
     public void ResetDepth()
@@ -182,6 +191,30 @@ public class UniqueShadowManager : MonoBehaviour
         m_ShadowCamera.transform.position = m_Camera.transform.position;
         m_ShadowCamera.transform.rotation = m_Camera.transform.rotation;
         m_ShadowCamera.targetTexture = m_depthTex;
+    }
+
+
+    public void DrawBlur(RenderTexture rt)
+    {
+        
+        
+        if (rt == null||blur_mat==null)
+        {
+            return;
+        }
+
+        Graphics.Blit(rt, rt);
+        if (m_BlurRadius>0)
+        {
+            blur_mat.SetFloat("_BlurRadius",m_BlurRadius);
+            for (int i = 0; i < 4; i++)
+            {
+                var temp = RenderTexture.GetTemporary(rt.descriptor);
+                Graphics.Blit(rt, temp, blur_mat, 0);
+                Graphics.Blit(temp, rt, blur_mat, 1);
+            }
+        }
+      
     }
 
     public void Resetlight()
@@ -194,6 +227,7 @@ public class UniqueShadowManager : MonoBehaviour
         m_ShadowCamera.backgroundColor = Color.white;
         m_ShadowCamera.targetTexture = m_ShadowRT;
     }
+
     //rt0
     void RenderUnique()
     {
